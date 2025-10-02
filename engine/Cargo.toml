@@ -26,11 +26,11 @@ numpy = { version = "0.26.0", default-features = false, optional = true }
 tract-onnx = { version = "0.22", optional = true }
 ort = { version = "2.0.0-rc.10", optional = true }
 # TODO: use executorch 0.7.1 when it is released
-executorch = { git = "https://github.com/barakugav/executorch-rs.git", rev = "b5d7bb2d178131cf3891fea47f47f490d80a8cf5", features = [
+executorch = { version = "0.7.1", features = [
     "module",
     "tensor-ptr",
 ], optional = true }
-executorch-sys = { git = "https://github.com/barakugav/executorch-rs.git", rev = "b5d7bb2d178131cf3891fea47f47f490d80a8cf5", default-features = false, optional = true }
+executorch-sys = { version = "0.7.1", default-features = false, optional = true }
 pleco = { version = "0.5.*", optional = true }
 
 [features]

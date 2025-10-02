@@ -606,8 +606,9 @@ dependencies = [
 
 [[package]]
 name = "executorch"
-version = "0.7.0"
-source = "git+https://github.com/barakugav/executorch-rs.git?rev=b5d7bb2d178131cf3891fea47f47f490d80a8cf5#b5d7bb2d178131cf3891fea47f47f490d80a8cf5"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c837963785f277699f5f45c159c6eb9270ffc156c4b047e6fc4aa3285dd0000"
 dependencies = [
  "cfg-if",
  "executorch-sys",
@@ -616,8 +617,9 @@ dependencies = [
 
 [[package]]
 name = "executorch-sys"
-version = "0.7.0"
-source = "git+https://github.com/barakugav/executorch-rs.git?rev=b5d7bb2d178131cf3891fea47f47f490d80a8cf5#b5d7bb2d178131cf3891fea47f47f490d80a8cf5"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06d61924b2e2c249cc7ec6fc4768e87f36a6d2845a345326c4c1c4d89800f73d"
 dependencies = [
  "bindgen",
  "cc",
