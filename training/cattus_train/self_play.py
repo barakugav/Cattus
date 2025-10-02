@@ -1,4 +1,5 @@
 import os
+import platform
 import subprocess
 import threading
 import warnings
@@ -9,7 +10,15 @@ import torch
 import torch.nn as nn
 from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
 
-from cattus_train.config import ExecutorchConfig, InferenceConfig, OnnxOrtConfig, OnnxTractConfig, TorchPyConfig
+from cattus_train.config import (
+    EngineConfig,
+    ExecutorchConfig,
+    InferenceConfig,
+    OnnxOrtConfig,
+    OnnxTractConfig,
+    TorchPyConfig,
+    TorchTchRsConfig,
+)
 
 CATTUS_TOP = Path(__file__).parent.parent.parent.resolve()
 SELF_PLAY_CRATE_TOP = CATTUS_TOP / "training" / "self-play"
@@ -24,6 +33,8 @@ def compile_selfplay_exe(game: str, cfg: InferenceConfig, profile: str = "releas
     match cfg:
         case TorchPyConfig():
             features = ["torch-python"]
+        case TorchTchRsConfig():
+            features = ["torch-tch-rs"]
         case ExecutorchConfig():
             features = ["executorch"]
             match cfg.backend:
@@ -67,6 +78,30 @@ def compile_selfplay_exe(game: str, cfg: InferenceConfig, profile: str = "releas
     return SELF_PLAY_CRATE_TOP / "target" / build_dir / self_play_exec_name
 
 
+def runtime_env(cfg: EngineConfig, env: dict[str, str]) -> dict[str, str]:
+    dlib_paths = []
+    match cfg.model.inference:
+        case TorchTchRsConfig():
+            libtorch_path = CATTUS_TOP / "engine" / "third-party" / "libtorch" / "lib"
+            dlib_paths.append(libtorch_path)
+
+    if dlib_paths:
+        match platform.system():
+            case "Darwin":  # macOS
+                path_var = "DYLD_LIBRARY_PATH"
+            case "Windows":
+                path_var = "PATH"
+            case "Linux":
+                path_var = "LD_LIBRARY_PATH"
+            case unknown_system:
+                raise ValueError(f"Unsupported platform: {unknown_system}")
+        for p in dlib_paths:
+            prev_value = env.get(path_var)
+            env[path_var] = f"{p}{os.pathsep}{prev_value}" if prev_value else p
+
+    return env
+
+
 def export_model(
     model: nn.Module,
     model_path: Path,
@@ -91,7 +126,7 @@ def _export_model_impl(
     sample_input = torch.randn(input_shape)
 
     match cfg:
-        case TorchPyConfig():  # torch.jit
+        case TorchPyConfig() | TorchTchRsConfig():  # torch.jit
             traced_model = torch.jit.trace(model, sample_input)
             torch.jit.save(traced_model, model_path)
 
@@ -152,7 +187,7 @@ def _export_model_impl(
 
 def exported_model_suffix(cfg: InferenceConfig) -> str:
     match cfg:
-        case TorchPyConfig():
+        case TorchPyConfig() | TorchTchRsConfig():
             return "jit"
         case ExecutorchConfig():
             return "pte"

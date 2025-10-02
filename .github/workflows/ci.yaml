@@ -46,6 +46,10 @@ jobs:
         if: steps.cache-executorch-build.outputs.cache-hit != 'true'
         run: python engine/scripts/build_executorch.py
 
+      # Download libtorch
+      - name: Download libtorch
+        run: python engine/scripts/download_libtorch.py
+
       # Engine
       - name: Build Rust
         run: cargo build --all-features

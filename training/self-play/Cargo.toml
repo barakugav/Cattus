@@ -19,6 +19,7 @@ log = "0.4"
 [features]
 default = []
 torch-python = ["cattus/torch-python"]
+torch-tch-rs = ["cattus/torch-tch-rs"]
 onnx-tract = ["cattus/onnx-tract"]
 onnx-ort = ["cattus/onnx-ort"]
 executorch = ["cattus/executorch"]

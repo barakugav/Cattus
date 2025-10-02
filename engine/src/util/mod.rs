@@ -41,12 +41,12 @@ pub fn init_globals() {
             length: usize,
         ) {
             let filename = unsafe {
-                assert!(!filename.is_null());
+                debug_assert!(!filename.is_null());
                 let filename = std::ffi::CStr::from_ptr(filename);
                 filename.to_str().unwrap()
             };
             let message = unsafe {
-                assert!(!message.is_null());
+                debug_assert!(!message.is_null());
                 let bytes = std::slice::from_raw_parts(message.cast(), length);
                 let message = std::ffi::CStr::from_bytes_with_nul_unchecked(bytes);
                 message.to_str().unwrap()

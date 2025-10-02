@@ -30,6 +30,13 @@ class ExecutorchConfig:
 @dataclass(config={"extra": "forbid"}, kw_only=True)
 class TorchPyConfig:
     engine: Literal["torch-py"] = "torch-py"
+    device: Literal["cpu", "cuda", "mps"] | None = None
+
+
+@dataclass(config={"extra": "forbid"}, kw_only=True)
+class TorchTchRsConfig:
+    engine: Literal["torch-tch-rs"] = "torch-tch-rs"
+    device: Literal["cpu", "cuda", "mps"] | None = None
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
@@ -42,7 +49,7 @@ class OnnxOrtConfig:
     engine: Literal["onnx-ort"] = "onnx-ort"
 
 
-InferenceConfig = ExecutorchConfig | TorchPyConfig | OnnxTractConfig | OnnxOrtConfig
+InferenceConfig = ExecutorchConfig | TorchPyConfig | TorchTchRsConfig | OnnxTractConfig | OnnxOrtConfig
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
