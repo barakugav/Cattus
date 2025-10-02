@@ -1,6 +1,7 @@
 [env]
 EXECUTORCH_RS_EXECUTORCH_LIB_DIR = { value = "engine/third-party/executorch/build/", relative = true }
 MACOSX_DEPLOYMENT_TARGET = "12.0"
+LIBTORCH = { value = "engine/third-party/libtorch", relative = true }
 
 [profile.profiling]
 inherits = "release"

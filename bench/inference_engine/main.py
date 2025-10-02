@@ -1,6 +1,7 @@
 import argparse
 import copy
 import json
+import os
 import subprocess
 import tempfile
 import time
@@ -15,8 +16,9 @@ from cattus_train.config import (
     OnnxOrtConfig,
     OnnxTractConfig,
     TorchPyConfig,
+    TorchTchRsConfig,
 )
-from cattus_train.self_play import compile_selfplay_exe
+from cattus_train.self_play import compile_selfplay_exe, runtime_env
 
 CATTUS_TOP = Path(__file__).parent.parent.parent.resolve()
 SELF_PLAY_CRATE_TOP = CATTUS_TOP / "training" / "self-play"
@@ -44,6 +46,7 @@ def main():
         ExecutorchConfig(backend="xnnpack"),
         # ExecutorchConfig(backend="mps"),
         TorchPyConfig(),
+        TorchTchRsConfig(),
         OnnxTractConfig(),
         OnnxOrtConfig(),
     ]
@@ -100,6 +103,7 @@ def bench_selfplay(executable: Path, model_path: Path, cfg: Config) -> float:
                 f"--summary-file={summary_file}",
                 f"--config-file={cfg_file}",
             ],
+            env=runtime_env(engine_cfg, os.environ.copy()),
             cwd=SELF_PLAY_CRATE_TOP,
         )
 

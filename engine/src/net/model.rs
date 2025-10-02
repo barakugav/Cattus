@@ -21,6 +21,7 @@ pub enum InferenceConfig {
     OnnxOrt,
     OnnxTract,
     TorchPy { device: Option<TorchDevice> },
+    TorchTchRs { device: Option<TorchDevice> },
     Executorch,
 }
 impl Default for InferenceConfig {
@@ -31,6 +32,8 @@ impl Default for InferenceConfig {
             Self::OnnxTract
         } else if cfg!(feature = "executorch") {
             Self::Executorch
+        } else if cfg!(feature = "torch-tch-rs") {
+            Self::TorchTchRs { device: None }
         } else if cfg!(feature = "torch-python") {
             Self::TorchPy { device: None }
         } else {
@@ -42,7 +45,12 @@ impl Default for InferenceConfig {
 #[allow(clippy::large_enum_variant)]
 enum ModelImpl {
     #[cfg(feature = "torch-python")]
-    Py(Py<PyAny>),
+    TorchPy(Py<PyAny>),
+    #[cfg(feature = "torch-tch-rs")]
+    TorchRs {
+        model: torch::CModule,
+        device: torch::Device,
+    },
     #[cfg(feature = "executorch")]
     Executorch(executorch::module::Module<'static>),
     #[cfg(feature = "onnx-tract")]
@@ -92,7 +100,28 @@ class Model:
                     });
                     py_class.call1((path, device)).unwrapy(py).into()
                 });
-                ModelImpl::Py(model)
+                ModelImpl::TorchPy(model)
+            }
+            #[cfg(feature = "torch-tch-rs")]
+            InferenceConfig::TorchTchRs { device } => {
+                let device = device
+                    .map(|d| match d {
+                        TorchDevice::Cpu => torch::Device::Cpu,
+                        TorchDevice::Cuda => torch::Device::Cuda(0),
+                        TorchDevice::Mps => torch::Device::Mps,
+                    })
+                    .unwrap_or_else(|| {
+                        if torch::utils::has_cuda() {
+                            torch::Device::Cuda(0)
+                        } else if torch::utils::has_mps() {
+                            torch::Device::Mps
+                        } else {
+                            torch::Device::Cpu
+                        }
+                    });
+                let mut model = torch::CModule::load_on_device(path, device).unwrap();
+                model.set_eval();
+                ModelImpl::TorchRs { model, device }
             }
             #[cfg(feature = "executorch")]
             InferenceConfig::Executorch => {
@@ -127,6 +156,7 @@ class Model:
             }
             #[cfg(not(all(
                 feature = "torch-python",
+                feature = "torch-tch-rs",
                 feature = "executorch",
                 feature = "onnx-tract",
                 feature = "onnx-ort"
@@ -146,7 +176,7 @@ class Model:
     pub fn run(&mut self, inputs: Vec<ArrayD<f32>>) -> Vec<ArrayD<f32>> {
         match &mut self.model {
             #[cfg(feature = "torch-python")]
-            ModelImpl::Py(model) => Python::attach(|py| {
+            ModelImpl::TorchPy(model) => Python::attach(|py| {
                 use itertools::Itertools;
                 use numpy::{IntoPyArray, PyArrayMethods};
 
@@ -162,6 +192,31 @@ class Model:
                     .map(|o| o.into_bound(py).to_owned_array())
                     .collect_vec()
             }),
+            #[cfg(feature = "torch-tch-rs")]
+            ModelImpl::TorchRs { model, device } => {
+                let inputs = inputs
+                    .iter()
+                    .map(|input| {
+                        let tensor: torch::Tensor = input.try_into().unwrap();
+                        torch::IValue::Tensor(tensor.to_device(*device))
+                    })
+                    .collect::<Vec<_>>();
+                let outputs = torch::no_grad(|| model.forward_is(&inputs)).unwrap();
+                let outputs = match outputs {
+                    torch::IValue::Tuple(outputs) | torch::IValue::GenericList(outputs) => outputs,
+                    _ => panic!("expected tuple or list as model output"),
+                };
+                outputs
+                    .into_iter()
+                    .map(|o| {
+                        let torch::IValue::Tensor(tensor) = o else {
+                            panic!("expected tensor as model output");
+                        };
+                        let array: ArrayD<f32> = (&tensor.to(torch::Device::Cpu)).try_into().unwrap();
+                        array
+                    })
+                    .collect()
+            }
             #[cfg(feature = "executorch")]
             ModelImpl::Executorch(model) => {
                 let inputs = inputs
@@ -206,6 +261,7 @@ class Model:
             }
             #[cfg(not(any(
                 feature = "torch-python",
+                feature = "torch-tch-rs",
                 feature = "executorch",
                 feature = "onnx-tract",
                 feature = "onnx-ort"

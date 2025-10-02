@@ -23,7 +23,7 @@ from cattus_train.chess import Chess
 from cattus_train.config import Config
 from cattus_train.data_set import DataSet
 from cattus_train.hex import Hex
-from cattus_train.self_play import compile_selfplay_exe, export_model, exported_model_suffix
+from cattus_train.self_play import compile_selfplay_exe, export_model, exported_model_suffix, runtime_env
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
 
@@ -167,6 +167,7 @@ class TrainProcess:
                     f"--summary-file={summary_file}",
                     f"--config-file={cfg_file}",
                 ],
+                env=runtime_env(engine_cfg, os.environ.copy()),
                 cwd=SELF_PLAY_CRATE_DIR,
             )
             self._metrics["self_play_duration"] = time.time() - self_play_start_time
@@ -349,6 +350,7 @@ class TrainProcess:
                     f"--summary-file={compare_res_file}",
                     f"--config-file={cfg_file}",
                 ],
+                env=runtime_env(engine_cfg, os.environ.copy()),
                 cwd=SELF_PLAY_CRATE_DIR,
             )
             with open(compare_res_file, "r") as res_file:
