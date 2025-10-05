@@ -56,7 +56,7 @@ impl Display for TttMove {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TttBitboard {
     bitmap: u16,
 }
@@ -95,7 +95,7 @@ impl Bitboard for TttBitboard {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TttPosition {
     pub board_x: TttBitboard,
     pub board_o: TttBitboard,
@@ -332,8 +332,8 @@ mod tests {
         .into_iter()
         .map(ttt_position_from_str)
         {
-            assert!(pos.turn().opposite() == pos.flipped().turn());
-            assert!(pos.flipped().flipped() == pos);
+            assert_eq!(pos.turn().opposite(), pos.flipped().turn());
+            assert_eq!(pos.flipped().flipped(), pos);
         }
     }
 
@@ -353,12 +353,12 @@ mod tests {
                 let pos_t = pos.flipped();
 
                 /* Assert flip of flip is original */
-                assert!(pos == pos_t.flipped());
+                assert_eq!(pos, pos_t.flipped());
 
                 /* Assert flip of moves of flip are original moves */
                 let moves: HashSet<TttMove> = HashSet::from_iter(pos.legal_moves());
                 let moves_tt: HashSet<TttMove> = HashSet::from_iter(pos_t.legal_moves().map(|m| m.flipped()));
-                assert!(moves == moves_tt);
+                assert_eq!(moves, moves_tt);
 
                 /* Assert game result is the same */
                 match (pos.status(), pos_t.status()) {

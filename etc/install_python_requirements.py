@@ -16,6 +16,7 @@ def main() -> None:
             "install",
             "-r",
             ROOT_DIR / "etc" / "requirements.txt",
+            "--torch-backend=cpu",
         ],
         cwd=ROOT_DIR,
     )

@@ -12,7 +12,7 @@ impl DataSerializer<TttGame> for TttSerializer {
     fn serialize_data_entry(&self, entry: DataEntry<TttGame>, filename: &Path) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_signed_one(entry.winner) as i8;
-        assert!(entry.pos.turn() == GameColor::Player1);
+        assert_eq!(entry.pos.turn(), GameColor::Player1);
 
         let planes = cattus::ttt::net::position_to_planes(&entry.pos)
             .iter()

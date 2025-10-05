@@ -133,12 +133,12 @@ impl Bitboard for ChessBitboard {
     }
 
     fn get(&self, idx: usize) -> bool {
-        assert!(idx < ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE);
+        debug_assert!(idx < ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE);
         (self.b.0 & (1u64 << idx)) != 0
     }
 
     fn set(&mut self, idx: usize, val: bool) {
-        assert!(idx < ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE);
+        debug_assert!(idx < ChessGame::BOARD_SIZE * ChessGame::BOARD_SIZE);
         if val {
             self.b.0 |= 1u64 << idx;
         } else {
@@ -152,7 +152,7 @@ impl From<chess::BitBoard> for ChessBitboard {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct ChessPosition {
     pub board: chess::Board,
     pub fifty_rule_count: u8,
@@ -598,7 +598,7 @@ static MOVE_TO_NN_INDEX: std::sync::LazyLock<Vec<u16>> = std::sync::LazyLock::ne
     let no_move = u16::MAX;
     let mut res = vec![no_move; 64 * 64 + 22 * 4];
     for (idx, m) in NN_INDEX_TO_MOVE.iter().enumerate() {
-        assert!(res[m.to_idx()] == no_move);
+        assert_eq!(res[m.to_idx()], no_move);
         res[m.to_idx()] = idx as u16;
     }
     res
@@ -687,8 +687,8 @@ mod tests {
         .into_iter()
         .map(ChessPosition::from_fen)
         {
-            assert!(pos.turn().opposite() == pos.flipped().turn());
-            assert!(pos.flipped().flipped() == pos);
+            assert_eq!(pos.turn().opposite(), pos.flipped().turn());
+            assert_eq!(pos.flipped().flipped(), pos);
         }
     }
 
@@ -708,12 +708,12 @@ mod tests {
                 let pos_t = pos.flipped();
 
                 /* Assert flip of flip is original */
-                assert!(pos == pos_t.flipped());
+                assert_eq!(pos, pos_t.flipped());
 
                 /* Assert flip of moves of flip are original moves */
                 let moves = HashSet::<ChessMove>::from_iter(pos.legal_moves());
                 let moves_tt = HashSet::from_iter(pos_t.legal_moves().map(|m| m.flipped()));
-                assert!(moves == moves_tt);
+                assert_eq!(moves, moves_tt);
 
                 /* Assert game result is the same */
                 match (pos.status(), pos_t.status()) {
