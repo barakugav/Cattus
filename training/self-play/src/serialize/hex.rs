@@ -1,20 +1,16 @@
-use std::path::Path;
-
-use crate::self_play::{DataEntry, SerializerBase};
-use crate::serialize::DataSerializer;
+use crate::serialize::{generic_entry_to_bytes, DataEntry, ToBytes};
 use cattus::game::{GameColor, Position};
 use cattus::hex::HexGame;
 use itertools::Itertools;
 
-pub struct HexSerializer;
-impl<const BOARD_SIZE: usize> DataSerializer<HexGame<BOARD_SIZE>> for HexSerializer {
-    fn serialize_data_entry(&self, entry: DataEntry<HexGame<BOARD_SIZE>>, filename: &Path) -> std::io::Result<()> {
+impl<const BOARD_SIZE: usize> ToBytes for DataEntry<HexGame<BOARD_SIZE>> {
+    fn to_bytes(&self) -> Vec<u8> {
         /* Always serialize as turn=1 */
-        let winner = GameColor::to_signed_one(entry.winner) as i8;
-        assert_eq!(entry.pos.turn(), GameColor::Player1);
+        let winner = GameColor::to_signed_one(self.winner) as i8;
+        assert_eq!(self.pos.turn(), GameColor::Player1);
 
         #[allow(clippy::identity_op)]
-        let planes = cattus::hex::net::position_to_planes(&entry.pos)
+        let planes = cattus::hex::net::position_to_planes(&self.pos)
             .into_iter()
             .flat_map(|p| {
                 [
@@ -25,6 +21,6 @@ impl<const BOARD_SIZE: usize> DataSerializer<HexGame<BOARD_SIZE>> for HexSeriali
             })
             .collect_vec();
 
-        SerializerBase::write_entry::<HexGame<BOARD_SIZE>>(planes, entry.probs, winner, filename)
+        generic_entry_to_bytes::<HexGame<BOARD_SIZE>>(&planes, &self.probs, winner)
     }
 }

@@ -1,65 +1,17 @@
 use itertools::Itertools;
 use std::fs;
+use std::io::Write;
 use std::ops::Deref;
 use std::path::{self, Path, PathBuf};
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use cattus::game::{GameColor, GameStatus, Move, Position};
+use cattus::game::{GameColor, GameStatus, Position};
 use cattus::mcts::{MctsParams, MctsPlayer};
 use cattus::net;
 
-use crate::serialize::DataSerializer;
-
-pub struct DataEntry<Game: cattus::game::Game> {
-    pub pos: Game::Position,
-    pub probs: Vec<(Game::Move, f32)>,
-    pub winner: Option<GameColor>,
-}
-
-impl<Game: cattus::game::Game> Clone for DataEntry<Game> {
-    fn clone(&self) -> Self {
-        DataEntry {
-            pos: self.pos.clone(),
-            probs: self.probs.clone(),
-            winner: self.winner,
-        }
-    }
-}
-
-pub struct SerializerBase;
-impl SerializerBase {
-    pub fn write_entry<Game: cattus::game::Game>(
-        planes: Vec<u64>,
-        probs: Vec<(Game::Move, f32)>,
-        winner: i8,
-        filename: &Path,
-    ) -> std::io::Result<()> {
-        /* Use -1 for illegal moves */
-        let mut probs_vec = vec![-1.0f32; Game::MOVES_NUM];
-
-        /* Fill legal moves probabilities */
-        for (m, prob) in probs {
-            probs_vec[m.to_nn_idx()] = prob;
-        }
-
-        let u64bytes = u64::BITS as usize / 8;
-        let f32bytes = /* f32::BITS */ 32 / 8;
-        let i8bytes = i8::BITS as usize / 8;
-        let size = planes.len() * u64bytes + probs_vec.len() * f32bytes + i8bytes;
-        let mut bytes = Vec::with_capacity(size);
-
-        /* Serialized in little indian format, should deserialized the same */
-        bytes.extend(planes.into_iter().flat_map(|p| p.to_le_bytes()));
-        bytes.extend(probs_vec.into_iter().flat_map(|p| p.to_le_bytes()));
-        bytes.extend(winner.to_le_bytes());
-        assert_eq!(bytes.len(), size);
-
-        /* Write to file */
-        fs::write(filename, bytes)
-    }
-}
+use crate::serialize::{DataEntry, ToBytes};
 
 #[derive(Copy, Clone)]
 pub struct GamesResults {
@@ -71,22 +23,19 @@ pub struct GamesResults {
 pub struct SelfPlayRunner<Game: cattus::game::Game> {
     player1_params: MctsParams<Game>,
     player2_params: MctsParams<Game>,
-    serializer: Arc<dyn DataSerializer<Game>>,
     thread_num: usize,
 }
 
-impl<Game: cattus::game::Game + 'static> SelfPlayRunner<Game> {
-    pub fn new(
-        player1_params: MctsParams<Game>,
-        player2_params: MctsParams<Game>,
-        serializer: Arc<dyn DataSerializer<Game>>,
-        thread_num: u32,
-    ) -> Self {
+impl<Game> SelfPlayRunner<Game>
+where
+    Game: cattus::game::Game + 'static,
+    DataEntry<Game>: ToBytes,
+{
+    pub fn new(player1_params: MctsParams<Game>, player2_params: MctsParams<Game>, thread_num: u32) -> Self {
         assert!(thread_num > 0);
         Self {
             player1_params,
             player2_params,
-            serializer,
             thread_num: thread_num as usize,
         }
     }
@@ -113,7 +62,6 @@ impl<Game: cattus::game::Game + 'static> SelfPlayRunner<Game> {
             let worker = SelfPlayWorker::new(
                 self.player1_params.clone(),
                 self.player2_params.clone(),
-                self.serializer.clone(),
                 output_dir1.to_path_buf(),
                 output_dir2.to_path_buf(),
                 result.clone(),
@@ -144,7 +92,6 @@ impl<Game: cattus::game::Game + 'static> SelfPlayRunner<Game> {
 struct SelfPlayWorker<Game: cattus::game::Game> {
     player1_params: MctsParams<Game>,
     player2_params: MctsParams<Game>,
-    serializer: Arc<dyn DataSerializer<Game>>,
     output_dir1: PathBuf,
     output_dir2: PathBuf,
     results: Arc<Mutex<GamesResults>>,
@@ -152,12 +99,15 @@ struct SelfPlayWorker<Game: cattus::game::Game> {
     games_num: usize,
 }
 
-impl<Game: cattus::game::Game> SelfPlayWorker<Game> {
+impl<Game> SelfPlayWorker<Game>
+where
+    Game: cattus::game::Game,
+    DataEntry<Game>: ToBytes,
+{
     #[allow(clippy::too_many_arguments)]
     fn new(
         player1_params: MctsParams<Game>,
         player2_params: MctsParams<Game>,
-        serializer: Arc<dyn DataSerializer<Game>>,
         output_dir1: PathBuf,
         output_dir2: PathBuf,
         results: Arc<Mutex<GamesResults>>,
@@ -167,7 +117,6 @@ impl<Game: cattus::game::Game> SelfPlayWorker<Game> {
         Self {
             player1_params,
             player2_params,
-            serializer,
             output_dir1,
             output_dir2,
             results,
@@ -268,9 +217,8 @@ impl<Game: cattus::game::Game> SelfPlayWorker<Game> {
             other => panic!("unknown player index: {}", other),
         };
 
-        self.serializer.serialize_data_entry(
-            DataEntry { pos, probs, winner },
-            &output_dir.join(format!("{game_idx:#08}_{pos_idx:#03}.traindata",)),
-        )
+        let data_entry_bytes = DataEntry { pos, probs, winner }.to_bytes();
+        std::fs::File::create_new(&output_dir.join(format!("{game_idx:#08}_{pos_idx:#03}.traindata",)))?
+            .write_all(&data_entry_bytes)
     }
 }

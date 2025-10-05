@@ -1,13 +1,11 @@
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use cattus::chess::ChessPosition;
+use cattus::chess::{ChessGame, ChessPosition};
 use cattus::game::{GameColor, Position};
 use cattus::hex::HexGame;
-use cattus_self_play::self_play::DataEntry;
-use cattus_self_play::serialize::chess::ChessSerializer;
-use cattus_self_play::serialize::hex::HexSerializer;
-use cattus_self_play::serialize::ttt::TttSerializer;
-use cattus_self_play::serialize::DataSerializer;
+use cattus::ttt::TttGame;
+use cattus_self_play::serialize::{DataEntry, ToBytes};
 use cattus_self_play::test_util::{hex_position_from_str, ttt_position_from_str};
 use clap::Parser;
 use itertools::Itertools;
@@ -41,27 +39,24 @@ fn main() -> std::io::Result<()> {
 
 fn test_tictactoe(args: Args) -> std::io::Result<()> {
     let pos = ttt_position_from_str(&args.position);
-    let serializer = TttSerializer;
-    serialize_position(pos, &serializer, &args.outfile)
+    serialize_position::<TttGame>(pos, &args.outfile)
 }
 
 fn test_hex<const BOARD_SIZE: usize>(args: Args) -> std::io::Result<()> {
     let pos = hex_position_from_str(&args.position);
-    let serializer = HexSerializer;
-    serialize_position::<HexGame<BOARD_SIZE>>(pos, &serializer, &args.outfile)
+    serialize_position::<HexGame<BOARD_SIZE>>(pos, &args.outfile)
 }
 
 fn test_chess(args: Args) -> std::io::Result<()> {
     let pos = ChessPosition::from_fen(&args.position);
-    let serializer = ChessSerializer;
-    serialize_position(pos, &serializer, &args.outfile)
+    serialize_position::<ChessGame>(pos, &args.outfile)
 }
 
-fn serialize_position<Game: cattus::game::Game>(
-    pos: Game::Position,
-    serializer: &impl DataSerializer<Game>,
-    filename: &Path,
-) -> std::io::Result<()> {
+fn serialize_position<Game>(pos: Game::Position, filename: &Path) -> std::io::Result<()>
+where
+    Game: cattus::game::Game,
+    DataEntry<Game>: ToBytes,
+{
     let moves = pos.legal_moves().collect_vec();
     let moves_num = moves.len();
     let probs = moves
@@ -75,5 +70,6 @@ fn serialize_position<Game: cattus::game::Game>(
         2 => None,
         _ => panic!("cant happen"),
     };
-    serializer.serialize_data_entry(DataEntry { pos, probs, winner }, filename)
+    let bytes = DataEntry { pos, probs, winner }.to_bytes();
+    std::fs::File::create_new(filename)?.write_all(&bytes)
 }

@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::self_play::SelfPlayRunner;
-use crate::serialize::DataSerializer;
+use crate::serialize::{DataEntry, ToBytes};
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -52,10 +52,11 @@ struct MctsConfig {
     cache_size: usize,
 }
 
-pub fn run_main<Game>(serializer: Box<dyn DataSerializer<Game>>) -> std::io::Result<()>
+pub fn run_main<Game>() -> std::io::Result<()>
 where
     Game: cattus::game::Game + 'static,
     NNetwork<Game>: ValueFunction<Game>,
+    DataEntry<Game>: ToBytes,
 {
     util::init_globals();
     let args = SelfPlayArgs::parse();
@@ -105,8 +106,11 @@ where
         }
     };
 
-    let result = SelfPlayRunner::new(player1_params, player2_params, Arc::from(serializer), config.threads)
-        .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
+    let result = SelfPlayRunner::new(player1_params, player2_params, config.threads).generate_data(
+        args.games_num as usize,
+        &args.out_dir1,
+        &args.out_dir2,
+    )?;
 
     if let Some(summary_file) = args.summary_file {
         let mut metrics = HashMap::new();
