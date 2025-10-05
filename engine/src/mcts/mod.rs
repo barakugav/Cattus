@@ -14,6 +14,7 @@ use std::time::Instant;
 use crate::game::player::GamePlayer;
 use crate::game::{GameColor, GameStatus, Position};
 use crate::mcts::value_func::ValueFunction;
+use crate::util::dirichlet::MultiDistribution;
 use crate::util::metric::RunningAverage;
 
 /// Monte Carlo Tree Search (MCTS) implementation
@@ -247,12 +248,17 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         let parent_pos = self.search_tree[parent_id].position.clone();
         debug_assert!(parent_pos.status().is_ongoing());
 
-        debug_assert!({
-            let moves_actual: HashSet<Game::Move> =
-                HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| m.clone()));
-            let moves_expected: HashSet<Game::Move> = HashSet::from_iter(parent_pos.legal_moves());
-            moves_actual == moves_expected
-        });
+        debug_assert_eq!(
+            {
+                let moves_expected: HashSet<Game::Move> = HashSet::from_iter(parent_pos.legal_moves());
+                moves_expected
+            },
+            {
+                let moves_actual: HashSet<Game::Move> =
+                    HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| m.clone()));
+                moves_actual
+            }
+        );
 
         for (m, p) in per_move_init_score {
             let leaf_pos = parent_pos.moved_position(m.clone());
@@ -261,7 +267,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         }
     }
 
-    fn simulate(&mut self, leaf_id: NodeIndex) -> (Vec<(Game::Move, f32)>, f32) {
+    fn simulate(&self, leaf_id: NodeIndex) -> (Vec<(Game::Move, f32)>, f32) {
         let position = &self.search_tree[leaf_id].position;
         debug_assert!(position.status().is_ongoing());
         self.value_func.evaluate(position)
@@ -356,7 +362,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             let root = MctsNode::from_position(position.clone());
             self.root = Some(self.search_tree.add_node(root));
         }
-        assert!(position == &self.search_tree[self.root.unwrap()].position);
+        assert_eq!(position, &self.search_tree[self.root.unwrap()].position);
 
         // Run all simulations
         self.develop_tree(pos_history);
@@ -431,17 +437,18 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         /* The Dirichlet implementation seems to return NaNs and INFs sometimes. */
         /* Keep drawing random noises until valid values are achieved */
         let dist = crate::util::dirichlet::Dirichlet::new(&vec![self.prior_noise_alpha; moves.len()]).unwrap();
-        let noise_vec = loop {
-            let noise_vec = dist.sample(&mut rand::rng());
+        let mut noise_vec = vec![0.0_f32; dist.sample_len()];
+        loop {
+            dist.sample_to_slice(&mut rand::rng(), &mut noise_vec);
             if noise_vec.iter().all(|n| n.is_finite()) {
-                break noise_vec;
+                break;
             }
-        };
+        }
 
-        for (edge_id, noise) in moves.into_iter().zip(noise_vec.into_iter()) {
+        for (edge_id, noise) in moves.into_iter().zip(noise_vec) {
             let m = self.search_tree.edge_weight_mut(edge_id).unwrap();
             m.init_score = (1.0 - self.prior_noise_epsilon) * m.init_score + self.prior_noise_epsilon * noise;
-            assert!(m.init_score.is_finite());
+            debug_assert!(m.init_score.is_finite());
         }
     }
 }

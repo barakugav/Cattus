@@ -11,7 +11,7 @@ impl<const BOARD_SIZE: usize> DataSerializer<HexGame<BOARD_SIZE>> for HexSeriali
     fn serialize_data_entry(&self, entry: DataEntry<HexGame<BOARD_SIZE>>, filename: &Path) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_signed_one(entry.winner) as i8;
-        assert!(entry.pos.turn() == GameColor::Player1);
+        assert_eq!(entry.pos.turn(), GameColor::Player1);
 
         #[allow(clippy::identity_op)]
         let planes = cattus::hex::net::position_to_planes(&entry.pos)

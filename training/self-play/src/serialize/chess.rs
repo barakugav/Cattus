@@ -13,7 +13,7 @@ impl DataSerializer<ChessGame> for ChessSerializer {
     fn serialize_data_entry(&self, mut entry: DataEntry<ChessGame>, filename: &Path) -> std::io::Result<()> {
         /* Always serialize as turn=1 */
         let winner = GameColor::to_signed_one(entry.winner) as i8;
-        assert!(entry.pos.turn() == GameColor::Player1);
+        assert_eq!(entry.pos.turn(), GameColor::Player1);
 
         let planes = cattus::chess::net::position_to_planes(&entry.pos)
             .iter()
@@ -50,7 +50,7 @@ impl DataSerializer<ChessGame> for ChessSerializer {
         bytes.extend(moves_bitmap.into_iter().flat_map(|p| p.to_le_bytes()));
         bytes.extend(moves_probs.into_iter().flat_map(|p| p.to_le_bytes()));
         bytes.extend(winner.to_le_bytes());
-        assert!(bytes.len() == size);
+        assert_eq!(bytes.len(), size);
 
         /* Write to file */
         fs::write(filename, bytes)

@@ -48,7 +48,7 @@ impl<const BOARD_SIZE: usize> Display for HexMove<BOARD_SIZE> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct HexBitboard<const BOARD_SIZE: usize> {
     bitmap: u128,
 }
@@ -109,7 +109,7 @@ impl<const BOARD_SIZE: usize> Bitboard for HexBitboard<BOARD_SIZE> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct HexPosition<const BOARD_SIZE: usize> {
     /// The board should be imagined in 2D like so:
     /// The board is a rhombus, slanted right. So, board[0][BOARD_SIZE - 1] is the "top right end",
@@ -505,9 +505,9 @@ mod tests {
             reeeeebeeee\
             b",
         );
-        assert!(pos.turn() == GameColor::Player2);
-        assert!(pos.flipped().turn() == GameColor::Player1);
-        assert!(pos.flipped().flipped() == pos);
+        assert_eq!(pos.turn(), GameColor::Player2);
+        assert_eq!(pos.flipped().turn(), GameColor::Player1);
+        assert_eq!(pos.flipped().flipped(), pos);
     }
 
     #[test]
@@ -526,13 +526,13 @@ mod tests {
                 let pos_t = pos.flipped();
 
                 /* Assert flip of flip is original */
-                assert!(pos == pos_t.flipped());
+                assert_eq!(pos, pos_t.flipped());
 
                 /* Assert flip of moves of flip are original moves */
                 type Move = <HexGameStandard as Game>::Move;
                 let moves: HashSet<Move> = HashSet::from_iter(pos.legal_moves());
                 let moves_tt: HashSet<Move> = HashSet::from_iter(pos_t.legal_moves().into_iter().map(|m| m.flipped()));
-                assert!(moves == moves_tt);
+                assert_eq!(moves, moves_tt);
 
                 /* Assert game result is the same */
                 match (pos.status(), pos_t.status()) {

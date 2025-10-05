@@ -54,7 +54,7 @@ impl SerializerBase {
         bytes.extend(planes.into_iter().flat_map(|p| p.to_le_bytes()));
         bytes.extend(probs_vec.into_iter().flat_map(|p| p.to_le_bytes()));
         bytes.extend(winner.to_le_bytes());
-        assert!(bytes.len() == size);
+        assert_eq!(bytes.len(), size);
 
         /* Write to file */
         fs::write(filename, bytes)
