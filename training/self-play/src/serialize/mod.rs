@@ -34,7 +34,7 @@ pub fn generic_entry_to_bytes<Game: cattus::game::Game>(
     let mut bytes = Vec::with_capacity(size);
 
     /* Serialized in little indian format, should deserialized the same */
-    bytes.extend(planes.into_iter().flat_map(|p| p.to_le_bytes()));
+    bytes.extend(planes.iter().flat_map(|p| p.to_le_bytes()));
     bytes.extend(probs_vec.into_iter().flat_map(|p| p.to_le_bytes()));
     bytes.extend(winner.to_le_bytes());
     assert_eq!(bytes.len(), size);
