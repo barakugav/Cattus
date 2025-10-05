@@ -33,6 +33,11 @@ def main():
         default=CATTUS_TOP / "training" / "config" / "chess_dev.yaml",
         help="Path to the config file",
     )
+    parser.add_argument(
+        "--samply",
+        action="store_true",
+        help="Use samply to record the self-play games",
+    )
     args = parser.parse_args()
 
     cfg = Config(**yaml.safe_load(args.config.read_text()))
@@ -42,13 +47,13 @@ def main():
     cfg.self_play.games_num = 2
 
     inference_configs = [
+        OnnxOrtConfig(),
         ExecutorchConfig(backend="none"),
         ExecutorchConfig(backend="xnnpack"),
         # ExecutorchConfig(backend="mps"),
         TorchPyConfig(),
         TorchTchRsConfig(),
         OnnxTractConfig(),
-        OnnxOrtConfig(),
     ]
 
     summary = []
@@ -67,7 +72,12 @@ def main():
                 "chess", inference_config, profile="profiling"
             )
             t0 = time.time()
-            score = bench_selfplay(executable, model_path, current_cfg)
+            score = bench_selfplay(
+                executable,
+                model_path,
+                current_cfg,
+                samply=args.samply,
+            )
             t1 = time.time()
 
             summary.append((inference_config, score, t1 - t0))
@@ -80,7 +90,12 @@ def main():
         print()
 
 
-def bench_selfplay(executable: Path, model_path: Path, cfg: Config) -> float:
+def bench_selfplay(
+    executable: Path,
+    model_path: Path,
+    cfg: Config,
+    samply: bool = False,
+) -> float:
     with tempfile.TemporaryDirectory() as tempdir_:
         tempdir = Path(tempdir_)
 
@@ -93,7 +108,7 @@ def bench_selfplay(executable: Path, model_path: Path, cfg: Config) -> float:
         summary_file = tempdir / "summary.json"
         subprocess.check_call(
             [
-                # *("samply", "record"),
+                *(() if not samply else ("samply", "record")),
                 executable,
                 f"--model1-path={model_path}",
                 f"--model2-path={model_path}",
