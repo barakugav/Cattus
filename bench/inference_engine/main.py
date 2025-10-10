@@ -51,7 +51,7 @@ def main():
         ExecutorchConfig(backend="none"),
         ExecutorchConfig(backend="xnnpack"),
         # ExecutorchConfig(backend="mps"),
-        TorchPyConfig(),
+        # TorchPyConfig(),
         TorchTchRsConfig(),
         OnnxTractConfig(),
     ]
