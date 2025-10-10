@@ -15,7 +15,7 @@ from cattus_train.config import (
     ExecutorchConfig,
     OnnxOrtConfig,
     OnnxTractConfig,
-    TorchPyConfig,
+    # TorchPyConfig,
     TorchTchRsConfig,
 )
 from cattus_train.self_play import compile_selfplay_exe, runtime_env
