@@ -131,18 +131,25 @@ where
             let mut player1 = MctsPlayer::new(player1_params.clone());
             let mut player2 = MctsPlayer::new(player2_params.clone());
 
+            let mut select = crossbeam::channel::Select::new();
+            let task_index = select.recv(&task_channel);
+            let termination_index = select.recv(control.termination_receiver());
             loop {
-                let task = crossbeam::select! {
-                    recv(task_channel) -> task => {
-                        match task {
+                let oper = select.select();
+                let task = match oper.index() {
+                    i if i == task_index => {
+                        match oper.recv(&task_channel) {
                             Ok(task) => task,
                             Err(_) => break, // channel closed
                         }
                     }
-                    recv(control.termination_receiver()) -> _ => {
+                    i if i == termination_index => {
+                        let _ = oper.recv(control.termination_receiver());
                         break; // got termination signal
                     }
+                    _ => unreachable!(),
                 };
+
                 let mut game = Game::new();
                 let mut pos_probs_pairs = Vec::new();
                 let players_switch = task.game_idx % 2 == 1;
