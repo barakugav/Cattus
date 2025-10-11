@@ -5,10 +5,8 @@ import threading
 import warnings
 from pathlib import Path
 
-import executorch.exir
 import torch
 import torch.nn as nn
-from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
 
 from cattus_train.config import (
     EngineConfig,
@@ -132,6 +130,9 @@ def _export_model_impl(
 
         case ExecutorchConfig():  # executorch
             with warnings.catch_warnings():
+                import executorch.exir
+                from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
+
                 exported_model = torch.export.export(model, (sample_input,))
                 edge_program = executorch.exir.to_edge(exported_model)
 

@@ -21,7 +21,7 @@ struct Args {
 }
 
 fn main() -> std::io::Result<()> {
-    cattus::util::init_globals();
+    cattus::util::init_globals(Default::default());
 
     let args = Args::parse();
     let tensor = match args.game.as_str() {

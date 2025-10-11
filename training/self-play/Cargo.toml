@@ -16,6 +16,7 @@ metrics = "0.24"
 metrics-util = "0.20"
 log = "0.4"
 crossbeam = "0.8.4"
+indicatif = "0.18"
 
 
 [features]

@@ -13,9 +13,21 @@ pub(crate) mod python;
 use std::env;
 use std::path::Path;
 
-pub fn init_globals() {
+use log::LevelFilter;
+
+pub struct GlobalConfig {
+    pub log_level: LevelFilter,
+}
+impl Default for GlobalConfig {
+    fn default() -> Self {
+        Self {
+            log_level: LevelFilter::Info,
+        }
+    }
+}
+pub fn init_globals(config: GlobalConfig) {
     env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(config.log_level)
         .target(env_logger::Target::Stdout)
         .init();
 

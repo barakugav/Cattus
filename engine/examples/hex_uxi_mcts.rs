@@ -19,7 +19,7 @@ struct Args {
 }
 
 fn main() {
-    cattus::util::init_globals();
+    cattus::util::init_globals(Default::default());
 
     let args = Args::parse();
 

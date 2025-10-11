@@ -65,6 +65,7 @@ where
                 output_dir2.to_path_buf(),
             ),
         );
+        log::debug!("Spawning {} self-play workers", self.thread_num);
         for i in 0..self.thread_num.max(1) {
             let [player1_params, player2_params] =
                 [self.player1_params.clone(), self.player2_params.clone()].map(|params| MctsParams {
@@ -88,15 +89,18 @@ where
             task_sender.send(SelfPlayTask { game_idx }).unwrap();
         }
         let mut results = Vec::new();
+        let progress_bar = indicatif::ProgressBar::new(games_num as u64);
         while results.len() < games_num {
             let res = results_receiver.recv_timeout(std::time::Duration::from_secs(1));
             if manager.any_thread_crashed() {
                 break;
             }
             if let Ok(res) = res {
+                progress_bar.inc(1);
                 results.push(res);
             }
         }
+        progress_bar.finish_and_clear();
         let join_res = manager.terminate();
         if let Err(e) = join_res {
             return Err(std::io::Error::other(format!("Thread panicked: {:?}", e)));
@@ -190,11 +194,8 @@ where
                 }
 
                 /* Update winning counters */
-                results_channel
-                    .send(winner.map(|c| if players_switch { c.opposite() } else { c }))
-                    .unwrap();
-
-                log::debug!("Game {} done", task.game_idx);
+                let result = winner.map(|c| if players_switch { c.opposite() } else { c });
+                results_channel.send(result).unwrap();
             }
         }
     }

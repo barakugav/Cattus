@@ -3,7 +3,7 @@ use cattus::mcts::value_func::ValueFunction;
 use cattus::mcts::{MctsParams, TemperaturePolicy};
 use cattus::net::model::InferenceConfig;
 use cattus::net::NNetwork;
-use cattus::util;
+use cattus::util::{self, GlobalConfig};
 use clap::Parser;
 use rand::prelude::*;
 use std::collections::HashMap;
@@ -32,6 +32,8 @@ struct SelfPlayArgs {
     config_file: PathBuf,
     #[clap(long)]
     seed: Option<u64>,
+    #[clap(long, value_parser = log_level_parser, default_value = "Info")]
+    log_level: log::LevelFilter,
 }
 
 #[derive(serde::Deserialize)]
@@ -61,8 +63,11 @@ where
     NNetwork<Game>: ValueFunction<Game>,
     DataEntry<Game>: ToBytes,
 {
-    util::init_globals();
     let args = SelfPlayArgs::parse();
+
+    util::init_globals(GlobalConfig {
+        log_level: args.log_level,
+    });
 
     let metrics_snapshotter = args.summary_file.is_some().then(|| {
         let recorder = metrics_util::debugging::DebuggingRecorder::new();
@@ -164,4 +169,16 @@ where
     }
 
     Ok(())
+}
+
+fn log_level_parser(s: &str) -> Result<log::LevelFilter, String> {
+    Ok(match s {
+        "Off" => log::LevelFilter::Off,
+        "Error" => log::LevelFilter::Error,
+        "Warn" => log::LevelFilter::Warn,
+        "Info" => log::LevelFilter::Info,
+        "Debug" => log::LevelFilter::Debug,
+        "Trace" => log::LevelFilter::Trace,
+        _ => return Err(format!("invalid log level: {}", s)),
+    })
 }
