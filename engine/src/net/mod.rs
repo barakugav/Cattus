@@ -93,7 +93,9 @@ impl<Game: crate::game::Game> NNetwork<Game> {
     ) -> (Vec<(Game::Move, f32)>, f32) {
         let planes = to_planes(pos);
 
-        let (move_scores, val) = self.batcher.apply(planes, Duration::from_millis(20), |inputs| {
+        let batch_deadline = Duration::from_secs_f64(self.metrics.lock().unwrap().run_duration.get());
+        let batch_deadline = batch_deadline.min(Duration::from_millis(20));
+        let (move_scores, val) = self.batcher.apply(planes, batch_deadline, |inputs| {
             self.run_net(planes_to_tensor::<Game>(&inputs, self.batcher.batch_size()))
         });
 

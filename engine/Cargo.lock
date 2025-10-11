@@ -259,6 +259,7 @@ version = "0.1.0"
 dependencies = [
  "chess",
  "clap",
+ "crossbeam-utils",
  "env_logger",
  "executorch",
  "executorch-sys",
