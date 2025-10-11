@@ -606,8 +606,7 @@ static MOVE_TO_NN_INDEX: std::sync::LazyLock<Vec<u16>> = std::sync::LazyLock::ne
 
 #[cfg(test)]
 mod tests {
-    use rand::rngs::StdRng;
-    use rand::{Rng, RngCore, SeedableRng};
+    use rand::prelude::*;
     use std::collections::HashSet;
 
     use crate::chess::{ChessGame, ChessMove, ChessPosition};
@@ -694,9 +693,7 @@ mod tests {
 
     #[test]
     fn flip_rand() {
-        let seed: u64 = rand::rng().random();
-        println!("[{}] Using seed {}", stringify!(flip_rand), seed);
-        let mut rand = StdRng::seed_from_u64(seed);
+        let mut rand = StdRng::seed_from_u64(0xb44d233429c09d16);
 
         let games_num = 100;
         for _ in 0..games_num {

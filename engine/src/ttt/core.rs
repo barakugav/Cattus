@@ -278,8 +278,7 @@ impl Game for TttGame {
 
 #[cfg(test)]
 mod tests {
-    use rand::rngs::StdRng;
-    use rand::{Rng, RngCore, SeedableRng};
+    use rand::prelude::*;
     use std::cmp::Ordering;
     use std::collections::HashSet;
 
@@ -339,13 +338,11 @@ mod tests {
 
     #[test]
     fn flip_rand() {
-        let seed: u64 = rand::rng().random();
-        println!("[{}] Using seed {}", stringify!(flip_rand), seed);
-        let mut rand = StdRng::seed_from_u64(seed);
+        let mut rand = StdRng::seed_from_u64(0xf78ad6eae2a9ed60);
 
         let games_num = 100;
         for _ in 0..games_num {
-            let mut player = PlayerRand::from_seed(rand.next_u64() ^ 0xe4655449311aee87);
+            let mut player = PlayerRand::from_seed(rand.next_u64() ^ 0x9252a9837a0ddaca);
             let mut game = TttGame::new();
 
             while game.status().is_ongoing() {

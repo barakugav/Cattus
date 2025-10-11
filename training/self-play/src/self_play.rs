@@ -66,11 +66,16 @@ where
             ),
         );
         for i in 0..self.thread_num.max(1) {
+            let [player1_params, player2_params] =
+                [self.player1_params.clone(), self.player2_params.clone()].map(|params| MctsParams {
+                    seed: params.seed.map(|s| s ^ (i as u64) ^ 0x55d3992e7ee3598d),
+                    ..params
+                });
             manager.spawn_thread(
                 format!("self_play_worker_{}", i),
                 Self::self_play_worker_main(
-                    self.player1_params.clone(),
-                    self.player2_params.clone(),
+                    player1_params,
+                    player2_params,
                     task_receiver.clone(),
                     results_sender.clone(),
                     data_entry_sender.clone(),

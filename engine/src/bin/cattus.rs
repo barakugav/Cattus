@@ -20,6 +20,7 @@ struct Config {
     mcts: MctsConfig,
     #[allow(unused)]
     threads: u32,
+    seed: Option<u64>,
 }
 #[derive(serde::Deserialize)]
 struct ModelConfig {
@@ -61,6 +62,7 @@ fn main() -> std::io::Result<()> {
         prior_noise_alpha: config.mcts.prior_noise_alpha,
         prior_noise_epsilon: config.mcts.prior_noise_epsilon,
         value_func: Arc::new(StockfishNet),
+        seed: config.seed,
     };
 
     let mut uci = UCI::new(player_params);

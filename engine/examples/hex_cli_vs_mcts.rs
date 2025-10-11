@@ -50,6 +50,7 @@ fn run_main<const BOARD_SIZE: usize>(args: Args) {
         prior_noise_alpha: args.prior_noise_alpha,
         prior_noise_epsilon: args.prior_noise_epsilon,
         value_func,
+        seed: None,
     });
 
     let mut game = HexGame::<BOARD_SIZE>::new();

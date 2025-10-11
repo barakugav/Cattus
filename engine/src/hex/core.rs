@@ -372,8 +372,7 @@ impl<const BOARD_SIZE: usize> Game for HexGame<BOARD_SIZE> {
 
 #[cfg(test)]
 mod tests {
-    use rand::rngs::StdRng;
-    use rand::{Rng, RngCore, SeedableRng};
+    use rand::prelude::*;
     use std::cmp::Ordering;
     use std::collections::HashSet;
 
@@ -512,13 +511,11 @@ mod tests {
 
     #[test]
     fn flip_rand() {
-        let seed: u64 = rand::rng().random();
-        println!("[{}] Using seed {}", stringify!(flip_rand), seed);
-        let mut rand = StdRng::seed_from_u64(seed);
+        let mut rand = StdRng::seed_from_u64(0x8e931b83f015b328);
 
         let games_num = 100;
         for _ in 0..games_num {
-            let mut player = PlayerRand::from_seed(rand.next_u64() ^ 0xe4655449311aee87);
+            let mut player = PlayerRand::from_seed(rand.next_u64() ^ 0x669d82f7a78d1f5);
             let mut game = HexGameStandard::new();
 
             while game.status().is_ongoing() {
