@@ -17,4 +17,8 @@ impl RunningAverage {
         self.value = (1.0 - self.epsilon) * self.value + self.epsilon * new_value;
         self.inner.set(self.value);
     }
+
+    pub fn get(&self) -> f64 {
+        self.value
+    }
 }

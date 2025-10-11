@@ -65,12 +65,18 @@ where
                 output_dir2.to_path_buf(),
             ),
         );
+        log::debug!("Spawning {} self-play workers", self.thread_num);
         for i in 0..self.thread_num.max(1) {
+            let [player1_params, player2_params] =
+                [self.player1_params.clone(), self.player2_params.clone()].map(|params| MctsParams {
+                    seed: params.seed.map(|s| s ^ (i as u64) ^ 0x55d3992e7ee3598d),
+                    ..params
+                });
             manager.spawn_thread(
                 format!("self_play_worker_{}", i),
                 Self::self_play_worker_main(
-                    self.player1_params.clone(),
-                    self.player2_params.clone(),
+                    player1_params,
+                    player2_params,
                     task_receiver.clone(),
                     results_sender.clone(),
                     data_entry_sender.clone(),
@@ -83,15 +89,18 @@ where
             task_sender.send(SelfPlayTask { game_idx }).unwrap();
         }
         let mut results = Vec::new();
+        let progress_bar = indicatif::ProgressBar::new(games_num as u64);
         while results.len() < games_num {
             let res = results_receiver.recv_timeout(std::time::Duration::from_secs(1));
             if manager.any_thread_crashed() {
                 break;
             }
             if let Ok(res) = res {
+                progress_bar.inc(1);
                 results.push(res);
             }
         }
+        progress_bar.finish_and_clear();
         let join_res = manager.terminate();
         if let Err(e) = join_res {
             return Err(std::io::Error::other(format!("Thread panicked: {:?}", e)));
@@ -122,18 +131,25 @@ where
             let mut player1 = MctsPlayer::new(player1_params.clone());
             let mut player2 = MctsPlayer::new(player2_params.clone());
 
+            let mut select = crossbeam::channel::Select::new();
+            let task_index = select.recv(&task_channel);
+            let termination_index = select.recv(control.termination_receiver());
             loop {
-                let task = crossbeam::select! {
-                    recv(task_channel) -> task => {
-                        match task {
+                let oper = select.select();
+                let task = match oper.index() {
+                    i if i == task_index => {
+                        match oper.recv(&task_channel) {
                             Ok(task) => task,
                             Err(_) => break, // channel closed
                         }
                     }
-                    recv(control.termination_receiver()) -> _ => {
+                    i if i == termination_index => {
+                        let _ = oper.recv(control.termination_receiver());
                         break; // got termination signal
                     }
+                    _ => unreachable!(),
                 };
+
                 let mut game = Game::new();
                 let mut pos_probs_pairs = Vec::new();
                 let players_switch = task.game_idx % 2 == 1;
@@ -185,11 +201,8 @@ where
                 }
 
                 /* Update winning counters */
-                results_channel
-                    .send(winner.map(|c| if players_switch { c.opposite() } else { c }))
-                    .unwrap();
-
-                log::debug!("Game {} done", task.game_idx);
+                let result = winner.map(|c| if players_switch { c.opposite() } else { c });
+                results_channel.send(result).unwrap();
             }
         }
     }

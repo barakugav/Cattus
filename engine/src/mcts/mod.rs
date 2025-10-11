@@ -67,6 +67,7 @@ pub struct MctsPlayer<Game: crate::game::Game> {
     prior_noise_epsilon: f32,
     value_func: Arc<dyn ValueFunction<Game>>,
 
+    rng: StdRng,
     search_duration_metric: RunningAverage,
 }
 
@@ -77,6 +78,7 @@ pub struct MctsParams<Game: crate::game::Game> {
     pub prior_noise_alpha: f32,
     pub prior_noise_epsilon: f32,
     pub value_func: Arc<dyn ValueFunction<Game>>,
+    pub seed: Option<u64>,
 }
 impl<Game: crate::game::Game> MctsParams<Game> {
     pub fn new(sim_num: u32, value_func: Arc<dyn ValueFunction<Game>>) -> Self {
@@ -87,6 +89,7 @@ impl<Game: crate::game::Game> MctsParams<Game> {
             prior_noise_alpha: 0.0,
             prior_noise_epsilon: 0.0,
             value_func,
+            seed: None,
         }
     }
 }
@@ -99,6 +102,7 @@ impl<Game: crate::game::Game> Clone for MctsParams<Game> {
             prior_noise_alpha: self.prior_noise_alpha,
             prior_noise_epsilon: self.prior_noise_epsilon,
             value_func: Arc::clone(&self.value_func),
+            seed: self.seed,
         }
     }
 }
@@ -118,15 +122,24 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         );
         let search_duration_metric = RunningAverage::new(0.99, metrics::gauge!(search_duration_metric_name));
 
+        let rng = if let Some(seed) = params.seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            StdRng::from_os_rng()
+        };
+
         Self {
             search_tree: DiGraph::new(),
             root: None,
+
             sim_num: params.sim_num,
             explore_factor: params.explore_factor,
             prior_noise_alpha: params.prior_noise_alpha,
             prior_noise_epsilon: params.prior_noise_epsilon,
             temperature: params.temperature,
             value_func: params.value_func,
+
+            rng,
             search_duration_metric,
         }
     }
@@ -391,7 +404,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
     }
 
     pub fn choose_move_from_probabilities(
-        &self,
+        &mut self,
         pos_history: &[Game::Position],
         moves_probs: &[(Game::Move, f32)],
     ) -> Option<Game::Move> {
@@ -418,7 +431,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             let probs_sum: f32 = probabilities.iter().sum();
             let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
             let distribution = WeightedIndex::new(probabilities).unwrap();
-            Some(moves_probs[distribution.sample(&mut rand::rng())].0.clone())
+            Some(moves_probs[distribution.sample(&mut self.rng)].0.clone())
         }
     }
 
@@ -439,7 +452,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         let dist = crate::util::dirichlet::Dirichlet::new(&vec![self.prior_noise_alpha; moves.len()]).unwrap();
         let mut noise_vec = vec![0.0_f32; dist.sample_len()];
         loop {
-            dist.sample_to_slice(&mut rand::rng(), &mut noise_vec);
+            dist.sample_to_slice(&mut self.rng, &mut noise_vec);
             if noise_vec.iter().all(|n| n.is_finite()) {
                 break;
             }

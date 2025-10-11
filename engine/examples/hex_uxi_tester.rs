@@ -114,7 +114,7 @@ struct Args {
  *      --engine2 ./target/release/hex_uxi_mcts --engine2-params \"--sim-num\ 1500\"
  */
 fn main() {
-    cattus::util::init_globals();
+    cattus::util::init_globals(Default::default());
 
     let args = Args::parse();
     let parse_engine_args = |engine_args_str0: String| -> Option<Vec<String>> {

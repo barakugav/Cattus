@@ -4,16 +4,12 @@ from pathlib import Path
 
 import yaml
 
-from cattus_train import Config, train
-
 CATTUS_ENGINE_TOP = Path(__file__).parent.parent.parent.resolve() / "engine"
 
 
 def main():
-    log_fmt = "%(asctime)s.%(msecs)03d %(levelname)s: %(message)s"
+    log_fmt = "%(asctime)s %(levelname)s: %(message)s"
     logging.basicConfig(level=logging.DEBUG, format=log_fmt, datefmt="%Y-%m-%d %H:%M:%S")
-    # tensorflow is also using the logging lib, change it different from global
-    logging.getLogger("tensorflow").setLevel(logging.WARN)
 
     parser = argparse.ArgumentParser(description="Trainer")
     parser.add_argument("--config", type=Path, required=True, help="configuration file")
@@ -28,6 +24,8 @@ def main():
 
     with open(args.config, "r") as config_file:
         config = yaml.safe_load(config_file)
+
+    from cattus_train import Config, train
 
     train(Config(**config), run_id=args.run_id)
 

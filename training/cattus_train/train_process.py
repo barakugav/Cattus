@@ -5,13 +5,15 @@ import os
 import random
 import re
 import shutil
+import string
 import subprocess
 import tempfile
 import time
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import torch
@@ -33,7 +35,13 @@ SELF_PLAY_CRATE_DIR = CATTUS_TRAIN_TOP / "self-play"
 
 
 class TrainProcess:
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, run_id: Optional[str] = None):
+        if run_id is None:
+            run_id = datetime.now(timezone.utc).strftime("%y%m%d") + "".join(
+                random.choice(string.ascii_lowercase) for _ in range(4)
+            )
+        self.run_id = run_id
+
         cfg = copy.deepcopy(cfg)
         self.cfg: Config = cfg
 
@@ -90,14 +98,12 @@ class TrainProcess:
                 cfg.training.device = "mps"
             else:
                 cfg.training.device = "cpu"
+            logging.debug("Training device was not specified, using %s", cfg.training.device)
 
         self._lr_scheduler = LearningRateScheduler(cfg.training.learning_rate)
 
-    def run_training_loop(self, run_id=None):
-        if run_id is None:
-            run_id = datetime.now().strftime("%y%m%d_%H%M%S_%f")
-        self._run_id = run_id
-        metrics_filename = self.cfg.metrics_dir / f"{self._run_id}.csv"
+    def run_training_loop(self):
+        metrics_filename = self.cfg.metrics_dir / f"{self.run_id}.csv"
 
         # raise ValueError(self._base_model_path)
         best_model = (self._load_model(self._base_model_path), self._base_model_path)
@@ -108,9 +114,9 @@ class TrainProcess:
 
         logging.info("Starting training process with config:")
         logging.info(f"Configuration:\n{dic2str(asdict(self.cfg))}")
-        logging.info("run ID:\t%s", self._run_id)
-        logging.info("base model:\t%s", self._base_model_path)
-        logging.info("metrics file:\t%s", metrics_filename)
+        logging.info("Run ID:\t%s", self.run_id)
+        logging.info("Base model:\t%s", self._base_model_path)
+        logging.info("Metrics file:\t%s", metrics_filename)
 
         logging.info("Building Self-play executable...")
         profile = "dev" if self.cfg.debug else "release"
@@ -144,7 +150,7 @@ class TrainProcess:
     def _self_play(self, model_dir: Path):
         logging.info("Self playing using model: %s", model_dir)
 
-        games_dir = self.cfg.games_dir / self._run_id
+        games_dir = self.cfg.games_dir / self.run_id
         data_entries_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -188,7 +194,7 @@ class TrainProcess:
 
     def _train(self, models, iter_num) -> list[tuple[nn.Module, Path]]:
         train_data_dir = (
-            self.cfg.games_dir if self.cfg.training.use_train_data_across_runs else self.cfg.games_dir / self._run_id
+            self.cfg.games_dir if self.cfg.training.use_train_data_across_runs else self.cfg.games_dir / self.run_id
         )
 
         lr = self._lr_scheduler.get_lr(iter_num)
@@ -305,7 +311,7 @@ class TrainProcess:
             # Compare the best model to the latest/trained model
             with tempfile.TemporaryDirectory() as tmp_dir:
                 # take the opportunity to generate more games to main games directory
-                games_dir = self.cfg.games_dir / self._run_id
+                games_dir = self.cfg.games_dir / self.run_id
                 best_games_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
                 trained_games_dir = Path(tmp_dir) / "games"
 

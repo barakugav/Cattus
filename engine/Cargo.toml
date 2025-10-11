@@ -19,6 +19,8 @@ num-traits = "0.2"
 metrics = "0.24"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+crossbeam-utils = "0.8.4"
+
 
 # Optional dependencies for model inference
 pyo3 = { version = "0.26.0", features = ["auto-initialize"], optional = true }
@@ -34,6 +36,7 @@ pleco = { version = "0.5.*", optional = true }
 # TODO: use tch-rs 0.21.0 when it is released
 torch = { package = "tch", git = "https://github.com/LaurentMazare/tch-rs.git", rev = "fde04c49b3e99ce298f401e83aa16705c0ae600d", default-features = false, optional = true }
 
+
 [features]
 default = []
 torch-python = ["pyo3", "numpy"]
@@ -42,6 +45,7 @@ onnx-tract = ["tract-onnx"]
 onnx-ort = ["ort"]
 executorch = ["dep:executorch", "executorch-sys"]
 stockfish = ["pleco"]
+
 
 [[bin]]
 name = "cattus"

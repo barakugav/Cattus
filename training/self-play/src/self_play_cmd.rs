@@ -3,8 +3,9 @@ use cattus::mcts::value_func::ValueFunction;
 use cattus::mcts::{MctsParams, TemperaturePolicy};
 use cattus::net::model::InferenceConfig;
 use cattus::net::NNetwork;
-use cattus::util;
+use cattus::util::{self, GlobalConfig};
 use clap::Parser;
+use rand::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -29,6 +30,10 @@ struct SelfPlayArgs {
     summary_file: Option<PathBuf>,
     #[clap(long)]
     config_file: PathBuf,
+    #[clap(long)]
+    seed: Option<u64>,
+    #[clap(long, value_parser = log_level_parser, default_value = "Info")]
+    log_level: log::LevelFilter,
 }
 
 #[derive(serde::Deserialize)]
@@ -58,8 +63,11 @@ where
     NNetwork<Game>: ValueFunction<Game>,
     DataEntry<Game>: ToBytes,
 {
-    util::init_globals();
     let args = SelfPlayArgs::parse();
+
+    util::init_globals(GlobalConfig {
+        log_level: args.log_level,
+    });
 
     let metrics_snapshotter = args.summary_file.is_some().then(|| {
         let recorder = metrics_util::debugging::DebuggingRecorder::new();
@@ -70,6 +78,11 @@ where
 
     let config: Config =
         serde_json::from_reader(std::fs::File::open(&args.config_file)?).expect("failed to read config file");
+
+    let mut rng = match args.seed {
+        Some(seed) => StdRng::seed_from_u64(seed),
+        None => StdRng::from_os_rng(),
+    };
 
     assert!(!config.mcts.temperature_policy.is_empty());
     let scheduled_temperatures = &config.mcts.temperature_policy[..config.mcts.temperature_policy.len() - 1];
@@ -89,21 +102,23 @@ where
         prior_noise_alpha: config.mcts.prior_noise_alpha,
         prior_noise_epsilon: config.mcts.prior_noise_epsilon,
         value_func: player1_net,
+        seed: Some(rng.random::<u64>() ^ 0x70d8297fb1526e09),
     };
 
-    let player2_params = if args.model1_path == args.model2_path {
-        player1_params.clone()
+    let player2_net = if args.model1_path == args.model2_path {
+        player1_params.value_func.clone()
     } else {
-        let player2_net: Arc<dyn ValueFunction<Game>> = Arc::new(NNetwork::new(
+        Arc::new(NNetwork::new(
             &args.model2_path,
             config.model.inference,
             config.model.batch_size,
             Some(Arc::new(ValueFuncCache::new(config.mcts.cache_size))),
-        ));
-        MctsParams {
-            value_func: player2_net,
-            ..player1_params.clone()
-        }
+        ))
+    };
+    let player2_params = MctsParams {
+        value_func: player2_net,
+        seed: Some(rng.random::<u64>() ^ 0x154e9535475dcc03),
+        ..player1_params.clone()
     };
 
     let result = SelfPlayRunner::new(player1_params, player2_params, config.threads).generate_data(
@@ -154,4 +169,16 @@ where
     }
 
     Ok(())
+}
+
+fn log_level_parser(s: &str) -> Result<log::LevelFilter, String> {
+    Ok(match s {
+        "Off" => log::LevelFilter::Off,
+        "Error" => log::LevelFilter::Error,
+        "Warn" => log::LevelFilter::Warn,
+        "Info" => log::LevelFilter::Info,
+        "Debug" => log::LevelFilter::Debug,
+        "Trace" => log::LevelFilter::Trace,
+        _ => return Err(format!("invalid log level: {}", s)),
+    })
 }

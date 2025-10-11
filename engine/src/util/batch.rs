@@ -54,7 +54,7 @@ impl<I, O> Batcher<I, O> {
         }
         let apply_impl = |xs| apply_impl(xs).into_iter().map(Some).collect_vec();
 
-        let mut attempt = 0; // TODO: use crossbeam backoff
+        let backoff = crossbeam_utils::Backoff::new();
         let (batch_ptr, input_idx) = loop {
             {
                 let mut next_batch = self.next_batch.lock().unwrap();
@@ -105,9 +105,9 @@ impl<I, O> Batcher<I, O> {
                     return output;
                 }
             }
-            attempt += 1;
-            if attempt < 3 {
-                thread::yield_now();
+
+            if !backoff.is_completed() {
+                backoff.snooze();
             } else {
                 thread::sleep(Duration::from_micros(100));
             }
@@ -129,6 +129,9 @@ impl<I, O> Batcher<I, O> {
                     if wait_start_time.elapsed() < deadline {
                         continue;
                     }
+
+                    let mut next_batch = self.next_batch.lock().unwrap();
+
                     let mut batch = batch_ptr.inner.lock().unwrap();
                     if !matches!(&*batch, BatchInner::Collect(_)) {
                         continue;
@@ -143,8 +146,9 @@ impl<I, O> Batcher<I, O> {
                         )
                         .unwrap(); // can not fail, only who has the batch inner lock can change the state to 'compute'
                     {
-                        let mut next_batch = self.next_batch.lock().unwrap();
-                        *next_batch = Arc::new(Batch::new());
+                        if Arc::ptr_eq(&*next_batch, &batch_ptr) {
+                            *next_batch = Arc::new(Batch::new());
+                        }
                     }
 
                     let inputs = std::mem::replace(&mut *batch, BatchInner::Compute);
