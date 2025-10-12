@@ -41,7 +41,7 @@ self_play:
 
 training:
     latest_data_entries: 36864
-    iteration_data_entries: 12288
+    epoch_size: 12288
     batch_size: 64
     learning_rate:
         - [25, 0.01]

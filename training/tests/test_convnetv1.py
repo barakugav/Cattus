@@ -45,7 +45,7 @@ self_play:
         warning_losing_threshold: 0.55
 training:
     latest_data_entries: 1024
-    iteration_data_entries: 128
+    epoch_size: 128
     batch_size: 4
     learning_rate:
         - [       0.001]

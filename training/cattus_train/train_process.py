@@ -19,7 +19,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 
 from cattus_train.chess import Chess
 from cattus_train.config import Config
@@ -207,11 +207,32 @@ class TrainProcess:
         trained_models = [None] * len(models)
 
         def train_models(model_list: list[tuple[int, nn.Module]]):
-            for m_idx, model in model_list:
-                data_set = DataSet(
-                    self._game, train_data_dir, self.cfg.training, torch.device(self.cfg.training.device)
+            data_set = DataSet(
+                self._game,
+                train_data_dir,
+                self.cfg.training,
+                device=self.cfg.training.device,
+            )
+            num_samples = self.cfg.training.epoch_size
+            max_num_samples = len(data_set) * 4
+            if num_samples > max_num_samples:
+                logging.warning(
+                    f"Requested epoch size {num_samples} is larger than available data size {len(data_set)},"
+                    f" reducing epoch size to {max_num_samples}",
                 )
-                data_loader = DataLoader(data_set, batch_size=self.cfg.training.batch_size)
+                num_samples = max_num_samples
+            sampler = RandomSampler(
+                data_set,
+                replacement=True,
+                num_samples=num_samples,
+            )
+            data_loader = DataLoader(
+                data_set,
+                batch_size=self.cfg.training.batch_size,
+                sampler=sampler,
+            )
+
+            for m_idx, model in model_list:
 
                 def mask_illegal_moves(output, target):
                     output = torch.where(target >= 0, output, -1e10)

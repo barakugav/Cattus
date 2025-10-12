@@ -110,12 +110,11 @@ self_play:
 # Model training parameters
 training:
     # The number of latest entries considered as training data
-    # suggested value: (1-16) * iteration_data_entries
+    # suggested value: (1-16) * (self play games_num) * (average positions per game)
     latest_data_entries: 262144
 
     # Number of entries used in a single training iteration, uniformly from latest entries3
-    # suggested value: (1-16) * (self play games_num) * (average positions per game)
-    iteration_data_entries: 32768
+    epoch_size: 32768
 
     # Batch size
     # suggested value: 64-256
