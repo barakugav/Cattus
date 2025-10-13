@@ -6,6 +6,7 @@ use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;
+use rand_distr::multi::{Dirichlet, MultiDistribution};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
@@ -14,7 +15,6 @@ use std::time::Instant;
 use crate::game::player::GamePlayer;
 use crate::game::{GameColor, GameStatus, Position};
 use crate::mcts::value_func::ValueFunction;
-use crate::util::dirichlet::MultiDistribution;
 use crate::util::metric::RunningAverage;
 
 /// Monte Carlo Tree Search (MCTS) implementation
@@ -449,7 +449,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
 
         /* The Dirichlet implementation seems to return NaNs and INFs sometimes. */
         /* Keep drawing random noises until valid values are achieved */
-        let dist = crate::util::dirichlet::Dirichlet::new(&vec![self.prior_noise_alpha; moves.len()]).unwrap();
+        let dist = Dirichlet::new(&vec![self.prior_noise_alpha; moves.len()]).unwrap();
         let mut noise_vec = vec![0.0_f32; dist.sample_len()];
         loop {
             dist.sample_to_slice(&mut self.rng, &mut noise_vec);
