@@ -1,12 +1,6 @@
 pub(crate) mod batch;
 pub(crate) mod metric;
 
-/// A copy of rand_dist::dirichlet of version 0.4.0
-/// Remove once we bump to 0.6.0
-#[allow(dead_code)]
-#[allow(clippy::neg_cmp_op_on_partial_ord)]
-pub(crate) mod dirichlet;
-
 #[cfg(feature = "torch-python")]
 pub(crate) mod python;
 
