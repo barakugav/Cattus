@@ -20,9 +20,9 @@ working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 # Model architecture
 model:
     # Path to the base model for the training process
-    # [none] create new model
+    # null create new model
     # [latest] use model with latest timestamp
-    base: "[none]"
+    base: null
 
     # Type of network ("ConvNetV1", "simple_two_headed")
     type: "ConvNetV1"

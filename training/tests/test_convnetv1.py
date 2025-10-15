@@ -11,13 +11,13 @@ def _test_convnetv1(game_name):
     inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "onnx-ort")
     with tempfile.TemporaryDirectory() as tmp_dir:
         config = f"""
-game: "{game_name}"
+game: {game_name}
 iterations: 2
 debug: true
 working_area: {tmp_dir}
 model:
-    base: "[none]"
-    type: "ConvNetV1"
+    base: null
+    type: ConvNetV1
     residual_block_num: 2
     residual_filter_num: 2
     value_head_conv_output_channels_num: 4

@@ -11,13 +11,13 @@ def _test_simple_two_headed(game_name):
     inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "onnx-ort")
     with tempfile.TemporaryDirectory() as tmp_dir:
         config = f"""
-game: "{game_name}"
+game: {game_name}
 iterations: 3
 debug: true
 working_area: {tmp_dir}
 model:
-    base: "[none]"
-    type: "simple_two_headed"
+    base: null
+    type: simple_two_headed
 engine:
     mcts:
         sim_num: 10

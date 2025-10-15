@@ -8,7 +8,7 @@ from pydantic.dataclasses import Field, dataclass
 @dataclass(config={"extra": "allow"}, kw_only=True)
 class ModelConfig:
     type: str
-    base: Path | str = "[none]"
+    base: Optional[Path] = None
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)

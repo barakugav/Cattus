@@ -1,12 +1,12 @@
-game: "hex7"
+game: hex7
 iterations: 75
 model_num: 8
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
 model:
-    base: "[none]"
-    type: "ConvNetV1"
+    base: null
+    type: ConvNetV1
     residual_block_num: 7
     residual_filter_num: 16
     value_head_conv_output_channels_num: 16

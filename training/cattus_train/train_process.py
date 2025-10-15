@@ -79,7 +79,7 @@ class TrainProcess:
 
         self._net_type: str = cfg.model.type
         match cfg.model.base:
-            case "[none]":
+            case None:
                 self._base_model_path = self._save_model(self._create_model())
             case "[latest]":
                 logging.warning("Choosing latest model based on directory name format")
