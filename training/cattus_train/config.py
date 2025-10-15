@@ -8,7 +8,7 @@ from pydantic.dataclasses import Field, dataclass
 @dataclass(config={"extra": "allow"}, kw_only=True)
 class ModelConfig:
     type: str
-    base: Path | str = "[none]"
+    base: Optional[Path] = None
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
@@ -100,12 +100,8 @@ class TrainingConfig:
     use_train_data_across_runs: bool = False
     threads: Optional[int] = 1
     latest_data_entries: int
-    iteration_data_entries: int
+    epoch_size: int
     device: Literal["cpu", "cuda", "mps"] | None = None
-
-    def __post_init__(self):
-        if self.latest_data_entries < self.iteration_data_entries:
-            raise ValueError("latest_data_entries must be >= iteration_data_entries")
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)

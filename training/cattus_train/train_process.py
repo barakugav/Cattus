@@ -19,7 +19,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+import tqdm
+from torch.utils.data import DataLoader, RandomSampler
 
 from cattus_train.chess import Chess
 from cattus_train.config import Config
@@ -78,7 +79,7 @@ class TrainProcess:
 
         self._net_type: str = cfg.model.type
         match cfg.model.base:
-            case "[none]":
+            case None:
                 self._base_model_path = self._save_model(self._create_model())
             case "[latest]":
                 logging.warning("Choosing latest model based on directory name format")
@@ -105,13 +106,6 @@ class TrainProcess:
     def run_training_loop(self):
         metrics_filename = self.cfg.metrics_dir / f"{self.run_id}.csv"
 
-        # raise ValueError(self._base_model_path)
-        best_model = (self._load_model(self._base_model_path), self._base_model_path)
-        latest_models = [best_model]
-        if self.cfg.model_num > 1:
-            for _ in range(self.cfg.model_num - 1):
-                latest_models.append(copy.deepcopy(best_model))
-
         logging.info("Starting training process with config:")
         logging.info(f"Configuration:\n{dic2str(asdict(self.cfg))}")
         logging.info("Run ID:\t%s", self.run_id)
@@ -131,6 +125,20 @@ class TrainProcess:
         )
         shutil.copy(temp_model_compare_exec_path, self._model_compare_exec_path)
 
+        best_model = (self._load_model(self._base_model_path), self._base_model_path)
+
+        # Initial training of the base model
+        if self.cfg.training.use_train_data_across_runs:
+            self._metrics = {}
+            [best_model] = self._train([best_model], -1)
+
+        # Populate list of self.cfg.model_num models
+        latest_models = [best_model]
+        if self.cfg.model_num > 1:
+            for _ in range(self.cfg.model_num - 1):
+                latest_models.append(copy.deepcopy(best_model))
+
+        # Self play and training main loop
         for iter_num in range(self.cfg.iterations):
             logging.info(f"Training iteration {iter_num}")
             self._metrics = {}
@@ -207,11 +215,32 @@ class TrainProcess:
         trained_models = [None] * len(models)
 
         def train_models(model_list: list[tuple[int, nn.Module]]):
-            for m_idx, model in model_list:
-                data_set = DataSet(
-                    self._game, train_data_dir, self.cfg.training, torch.device(self.cfg.training.device)
+            data_set = DataSet(
+                self._game,
+                train_data_dir,
+                self.cfg.training,
+                device=self.cfg.training.device,
+            )
+            num_samples = self.cfg.training.epoch_size
+            max_num_samples = len(data_set) * 4
+            if num_samples > max_num_samples:
+                logging.warning(
+                    f"Requested epoch size {num_samples} is larger than available data size {len(data_set)},"
+                    f" reducing epoch size to {max_num_samples}",
                 )
-                data_loader = DataLoader(data_set, batch_size=self.cfg.training.batch_size)
+                num_samples = max_num_samples
+            sampler = RandomSampler(
+                data_set,
+                replacement=True,
+                num_samples=num_samples,
+            )
+            data_loader = DataLoader(
+                data_set,
+                batch_size=self.cfg.training.batch_size,
+                sampler=sampler,
+            )
+
+            for m_idx, model in model_list:
 
                 def mask_illegal_moves(output, target):
                     output = torch.where(target >= 0, output, -1e10)
@@ -233,6 +262,12 @@ class TrainProcess:
                 model.to(self.cfg.training.device)
                 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
                 final_batch = None
+                progress_bar = tqdm.tqdm(
+                    desc=f"Training model {m_idx}",
+                    total=num_samples // data_loader.batch_size,
+                    unit="batch",
+                    leave=False,
+                )
                 training_start_time = time.time()
                 for x, y in data_loader:
                     optimizer.zero_grad()
@@ -240,6 +275,7 @@ class TrainProcess:
                     loss = loss_fn(outputs, y)
                     loss.backward()
                     optimizer.step()
+                    progress_bar.update(1)
                     final_batch = (x, y)
                 train_duration = time.time() - training_start_time
                 model = model.to("cpu")
@@ -256,6 +292,7 @@ class TrainProcess:
 
                 with torch.no_grad():
                     model.eval()
+                    # TODO: compute metrics on more than the last batch
                     final_x, final_y = final_batch
                     final_x = final_x.to("cpu")
                     final_y = (final_y[0].to("cpu"), final_y[1].to("cpu"))

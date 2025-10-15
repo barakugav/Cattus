@@ -20,9 +20,9 @@ working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 # Model architecture
 model:
     # Path to the base model for the training process
-    # [none] create new model
+    # null create new model
     # [latest] use model with latest timestamp
-    base: "[none]"
+    base: null
 
     # Type of network ("ConvNetV1", "simple_two_headed")
     type: "ConvNetV1"
@@ -110,12 +110,11 @@ self_play:
 # Model training parameters
 training:
     # The number of latest entries considered as training data
-    # suggested value: (1-16) * iteration_data_entries
+    # suggested value: (1-16) * (self play games_num) * (average positions per game)
     latest_data_entries: 262144
 
     # Number of entries used in a single training iteration, uniformly from latest entries3
-    # suggested value: (1-16) * (self play games_num) * (average positions per game)
-    iteration_data_entries: 32768
+    epoch_size: 32768
 
     # Batch size
     # suggested value: 64-256

@@ -1,62 +1,52 @@
 import os
 import random
 from pathlib import Path
-from typing import Iterator
 
 import numpy as np
 import torch
 from torch import Tensor
-from torch.utils.data import IterableDataset
+from torch.utils.data import Dataset
 
 from cattus_train.chess import Chess
 from cattus_train.config import TrainingConfig
 from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
-from cattus_train.trainable_game import DataEntry, DataEntryParseError, Game
+from cattus_train.trainable_game import DataEntry, Game
 
 
-class DataSet(IterableDataset):
+class DataSet(Dataset):
     def __init__(self, game: Game, train_data_dir: Path, cfg: TrainingConfig, device: torch.device):
         self._game: Game = game
         self._train_data_dir: Path = train_data_dir
         self._cfg = cfg
         self._device: torch.device = device
 
-    def __iter__(self) -> Iterator[tuple[Tensor, tuple[Tensor, Tensor]]]:
-        for filename in self._data_entries_filenames_gen():
-            try:
-                packed_entry = self._game.load_data_entry(filename)
-            except DataEntryParseError:
-                continue
-            entry = DataSet.unpack_planes(packed_entry, self._game)
+        self._filenames = self._data_entries_filenames()
 
-            # Transform (data augmentation)
-            self.transform(entry)
-
-            # Convert numpy to tensor and move to device
-            def to_tensor(array: np.ndarray) -> Tensor:
-                if any(s < 0 for s in array.strides):
-                    array = array.copy()
-                return torch.from_numpy(array)
-
-            planes = to_tensor(entry.planes).float().to(self._device)
-            probs = to_tensor(entry.probs).float().to(self._device)
-            winner = torch.tensor(entry.winner, dtype=torch.float32, device=self._device)
-            yield planes, (probs, winner)
-
-    def _data_entries_filenames_gen(self) -> Iterator[Path]:
+    def _data_entries_filenames(self) -> list[Path]:
         filenames = [p for p in self._train_data_dir.rglob("*.traindata")]
 
         # take the latests files
         filenames.sort(key=os.path.getmtime, reverse=True)
         filenames = filenames[: self._cfg.latest_data_entries]
 
-        # take a sub set
-        random.shuffle(filenames)
-        filenames = filenames[: self._cfg.iteration_data_entries]
+        return filenames
 
-        for filename in filenames:
-            yield filename
+    def __len__(self) -> int:
+        return len(self._filenames)
+
+    def __getitem__(self, index: int) -> tuple[Tensor, tuple[Tensor, Tensor]]:
+        filename = self._filenames[index]
+        packed_entry = self._game.load_data_entry(filename)
+        entry = DataSet.unpack_planes(packed_entry, self._game)
+
+        # Transform (data augmentation)
+        self.transform(entry)
+
+        planes = torch.tensor(np.ascontiguousarray(entry.planes), dtype=torch.float32, device=self._device)
+        probs = torch.tensor(np.ascontiguousarray(entry.probs), dtype=torch.float32, device=self._device)
+        winner = torch.tensor(entry.winner, dtype=torch.float32, device=self._device)
+        return planes, (probs, winner)
 
     @staticmethod
     def unpack_planes(packed_entry: DataEntry, game: Game) -> DataEntry:

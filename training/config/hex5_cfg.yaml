@@ -1,11 +1,11 @@
-game: "hex5"
+game: hex5
 iterations: 75
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
 model:
-    base: "[none]"
-    type: "ConvNetV1"
+    base: null
+    type: ConvNetV1
     residual_block_num: 7
     residual_filter_num: 16
     value_head_conv_output_channels_num: 16
@@ -41,7 +41,7 @@ self_play:
 
 training:
     latest_data_entries: 36864
-    iteration_data_entries: 12288
+    epoch_size: 12288
     batch_size: 64
     learning_rate:
         - [25, 0.01]

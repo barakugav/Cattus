@@ -1,12 +1,12 @@
-game: "tictactoe"
+game: tictactoe
 iterations: 30
 model_num: 4
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
 model:
-    base: "[none]"
-    type: "ConvNetV1"
+    base: null
+    type: ConvNetV1
     residual_block_num: 5
     residual_filter_num: 8
     value_head_conv_output_channels_num: 8
@@ -41,7 +41,7 @@ self_play:
 
 training:
     latest_data_entries: 1440
-    iteration_data_entries: 360
+    epoch_size: 360
     batch_size: 32
     learning_rate:
         - [10, 0.01]

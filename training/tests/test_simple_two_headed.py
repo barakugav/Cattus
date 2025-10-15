@@ -11,13 +11,13 @@ def _test_simple_two_headed(game_name):
     inference_engine = os.getenv("CATTUS_TEST_INFERENCE_ENGINE", "onnx-ort")
     with tempfile.TemporaryDirectory() as tmp_dir:
         config = f"""
-game: "{game_name}"
+game: {game_name}
 iterations: 3
 debug: true
 working_area: {tmp_dir}
 model:
-    base: "[none]"
-    type: "simple_two_headed"
+    base: null
+    type: simple_two_headed
 engine:
     mcts:
         sim_num: 10
@@ -40,7 +40,7 @@ self_play:
         warning_losing_threshold: 0.55
 training:
     latest_data_entries: 1024
-    iteration_data_entries: 128
+    epoch_size: 128
     batch_size: 4
     learning_rate:
         - [       0.001]
