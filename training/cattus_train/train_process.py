@@ -19,6 +19,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import tqdm
 from torch.utils.data import DataLoader, RandomSampler
 
 from cattus_train.chess import Chess
@@ -254,6 +255,12 @@ class TrainProcess:
                 model.to(self.cfg.training.device)
                 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
                 final_batch = None
+                progress_bar = tqdm.tqdm(
+                    desc=f"Training model {m_idx}",
+                    total=num_samples // data_loader.batch_size,
+                    unit="batch",
+                    leave=False,
+                )
                 training_start_time = time.time()
                 for x, y in data_loader:
                     optimizer.zero_grad()
@@ -261,6 +268,7 @@ class TrainProcess:
                     loss = loss_fn(outputs, y)
                     loss.backward()
                     optimizer.step()
+                    progress_bar.update(1)
                     final_batch = (x, y)
                 train_duration = time.time() - training_start_time
                 model = model.to("cpu")
