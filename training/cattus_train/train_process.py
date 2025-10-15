@@ -106,13 +106,6 @@ class TrainProcess:
     def run_training_loop(self):
         metrics_filename = self.cfg.metrics_dir / f"{self.run_id}.csv"
 
-        # raise ValueError(self._base_model_path)
-        best_model = (self._load_model(self._base_model_path), self._base_model_path)
-        latest_models = [best_model]
-        if self.cfg.model_num > 1:
-            for _ in range(self.cfg.model_num - 1):
-                latest_models.append(copy.deepcopy(best_model))
-
         logging.info("Starting training process with config:")
         logging.info(f"Configuration:\n{dic2str(asdict(self.cfg))}")
         logging.info("Run ID:\t%s", self.run_id)
@@ -132,6 +125,20 @@ class TrainProcess:
         )
         shutil.copy(temp_model_compare_exec_path, self._model_compare_exec_path)
 
+        best_model = (self._load_model(self._base_model_path), self._base_model_path)
+
+        # Initial training of the base model
+        if self.cfg.training.use_train_data_across_runs:
+            self._metrics = {}
+            [best_model] = self._train([best_model], -1)
+
+        # Populate list of self.cfg.model_num models
+        latest_models = [best_model]
+        if self.cfg.model_num > 1:
+            for _ in range(self.cfg.model_num - 1):
+                latest_models.append(copy.deepcopy(best_model))
+
+        # Self play and training main loop
         for iter_num in range(self.cfg.iterations):
             logging.info(f"Training iteration {iter_num}")
             self._metrics = {}
@@ -285,6 +292,7 @@ class TrainProcess:
 
                 with torch.no_grad():
                     model.eval()
+                    # TODO: compute metrics on more than the last batch
                     final_x, final_y = final_batch
                     final_x = final_x.to("cpu")
                     final_y = (final_y[0].to("cpu"), final_y[1].to("cpu"))
