@@ -27,11 +27,11 @@ pyo3 = { version = "0.27", features = ["auto-initialize"], optional = true }
 numpy = { version = "0.27", default-features = false, optional = true }
 tract-onnx = { version = "0.22", optional = true }
 ort = { version = "2.0.0-rc.10", optional = true }
-executorch = { version = "0.7.2", features = [
+executorch = { version = "0.8", features = [
     "module",
     "tensor-ptr",
 ], optional = true }
-executorch-sys = { version = "0.7.2", default-features = false, optional = true }
+executorch-sys = { version = "0.8", default-features = false, optional = true }
 pleco = { version = "0.5.*", optional = true }
 # TODO: use tch-rs 0.21.0 when it is released
 torch = { package = "tch", git = "https://github.com/LaurentMazare/tch-rs.git", rev = "fde04c49b3e99ce298f401e83aa16705c0ae600d", default-features = false, optional = true }
