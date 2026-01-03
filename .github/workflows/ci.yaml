@@ -3,10 +3,14 @@ name: CI
 on:
   push:
     branches:
-      - "**"
+      - main
+  pull_request: {} # on any branch
 
-permissions:
-  contents: read
+concurrency:
+  # on main, group = workflow-run_id
+  # on PR, group = workflow-PR_number
+  group: ${{ github.workflow_ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   cattus:
@@ -27,7 +31,7 @@ jobs:
       - name: Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: 1.89.0
+          toolchain: 1.92.0
           components: clippy
           cache-workspaces: |
             engine

@@ -43,7 +43,7 @@ where
         output_dir1: &Path,
         output_dir2: &Path,
     ) -> std::io::Result<GamesResults> {
-        assert!(games_num % 2 == 0, "Games num should be a multiple of 2");
+        assert!(games_num.is_multiple_of(2), "Games num should be a multiple of 2");
 
         /* Create output dir if doesn't exists */
         for output_dir in [output_dir1, output_dir2] {

@@ -8,8 +8,10 @@ CATTUS_ENGINE_TOP = Path(__file__).parent.parent.parent.resolve() / "engine"
 
 
 def main():
-    log_fmt = "%(asctime)s %(levelname)s: %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=log_fmt, datefmt="%Y-%m-%d %H:%M:%S")
+    log_fmt = "%(asctime)s %(levelname)-8s %(message)s"
+    logging.basicConfig(level=logging.DEBUG, format=log_fmt, datefmt="%H:%M:%S")
+    for lib in ["torch", "onnxscript", "onnx_ir"]:
+        logging.getLogger(lib).setLevel(logging.WARNING)
 
     parser = argparse.ArgumentParser(description="Trainer")
     parser.add_argument("--config", type=Path, required=True, help="configuration file")

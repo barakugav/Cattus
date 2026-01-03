@@ -15,9 +15,10 @@ chess = "^1.11.2"
 PyYAML = "^6.0"
 construct = "^2.10.70"
 pydantic = "~2.11"
-torch = "~2.8.0"
+torch = "~2.9.1"
 onnx = "^1.19.0"
-executorch = "^0.7.0"
+onnxscript = "^0.5.7"
+executorch = "^1.0.1"
 
 
 [build-system]

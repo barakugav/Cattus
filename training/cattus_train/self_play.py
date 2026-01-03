@@ -181,6 +181,7 @@ def _export_model_impl(
                     verbose=False,
                     input_names=["planes"],
                     output_names=["policy", "value"],
+                    dynamo=False,
                 )
         case _:
             raise ValueError(f"Unsupported inference engine: {cfg}")

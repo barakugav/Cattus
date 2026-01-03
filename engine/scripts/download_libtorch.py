@@ -13,7 +13,7 @@ PYTORCH_DIR = CRATE_DIR / "third-party" / "libtorch"
 
 def main():
     parser = argparse.ArgumentParser("Download libtorch")
-    parser.add_argument("--version", type=str, default="2.8.0")
+    parser.add_argument("--version", type=str, default="2.9.1")
     parser.add_argument(
         "--cuda", type=str, default="none", choices=["none", "cu118", "cu121", "cu129"]
     )
