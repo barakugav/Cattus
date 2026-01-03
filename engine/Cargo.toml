@@ -13,7 +13,7 @@ rand_distr = "0.6.0-rc.0"
 lazy_static = "1.5.*"
 petgraph = "0.8"
 clap = { version = "4.5", features = ["derive"] }
-ndarray = "0.16"
+ndarray = "0.17"
 chess = "3.2.*"
 num-traits = "0.2"
 metrics = "0.24"

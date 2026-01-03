@@ -267,7 +267,7 @@ dependencies = [
  "lazy_static",
  "log",
  "metrics",
- "ndarray",
+ "ndarray 0.17.1",
  "num-traits",
  "numpy",
  "ort",
@@ -664,7 +664,7 @@ checksum = "81cbaeccf70ab9d1c5b7fa053cb295fbe590231cef40548d1b06eb88a572b37a"
 dependencies = [
  "cfg-if",
  "executorch-sys",
- "ndarray",
+ "ndarray 0.17.1",
 ]
 
 [[package]]
@@ -1229,6 +1229,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ndarray"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c7c9125e8f6f10c9da3aad044cc918cf8784fa34de857b1aa68038eb05a50a9"
+dependencies = [
+ "matrixmultiply",
+ "num-complex",
+ "num-integer",
+ "num-traits",
+ "portable-atomic",
+ "portable-atomic-util",
+ "rawpointer",
+]
+
+[[package]]
 name = "nodrop"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1313,7 +1328,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7aac2e6a6e4468ffa092ad43c39b81c79196c2bb773b8db4085f695efe3bba17"
 dependencies = [
  "libc",
- "ndarray",
+ "ndarray 0.17.1",
  "num-complex",
  "num-integer",
  "num-traits",
@@ -1393,7 +1408,7 @@ version = "2.0.0-rc.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fa7e49bd669d32d7bc2a15ec540a527e7764aec722a45467814005725bcd721"
 dependencies = [
- "ndarray",
+ "ndarray 0.16.1",
  "ort-sys",
  "smallvec 2.0.0-alpha.10",
  "tracing",
@@ -2371,7 +2386,7 @@ dependencies = [
  "half",
  "lazy_static",
  "libc",
- "ndarray",
+ "ndarray 0.16.1",
  "rand 0.8.5",
  "safetensors 0.3.3",
  "thiserror 1.0.69",
@@ -2532,7 +2547,7 @@ dependencies = [
  "lazy_static",
  "log",
  "maplit",
- "ndarray",
+ "ndarray 0.16.1",
  "num-complex",
  "num-integer",
  "num-traits",
@@ -2558,7 +2573,7 @@ dependencies = [
  "lazy_static",
  "libm",
  "maplit",
- "ndarray",
+ "ndarray 0.16.1",
  "nom 8.0.0",
  "nom-language",
  "num-integer",
