@@ -3,10 +3,14 @@ name: CI
 on:
   push:
     branches:
-      - "**"
+      - main
+  pull_request: {} # on any branch
 
-permissions:
-  contents: read
+concurrency:
+  # on main, group = workflow-run_id
+  # on PR, group = workflow-PR_number
+  group: ${{ github.workflow_ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   cattus:
