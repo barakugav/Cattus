@@ -10,11 +10,16 @@ updates:
       rust-patch-updates:
         update-types:
           - patch
+  - package-ecosystem: rust-toolchain
+    directory: /
+    schedule:
+      interval: monthly
+
   - package-ecosystem: pip
     directory: training/
     schedule:
       interval: monthly
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
       interval: monthly
