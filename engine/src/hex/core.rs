@@ -286,6 +286,26 @@ impl<const BOARD_SIZE: usize> HexPosition<BOARD_SIZE> {
     }
 }
 
+impl<const BOARD_SIZE: usize> Display for HexPosition<BOARD_SIZE> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for r in 0..BOARD_SIZE {
+            for _ in 0..r {
+                write!(f, " ")?;
+            }
+            for c in 0..BOARD_SIZE {
+                let ch = match self.get_tile(r, c) {
+                    Some(GameColor::Player1) => 'R',
+                    Some(GameColor::Player2) => 'B',
+                    None => '.',
+                };
+                write!(f, "{} ", ch)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 impl<const BOARD_SIZE: usize> Position for HexPosition<BOARD_SIZE> {
     type Game = HexGame<BOARD_SIZE>;
     fn new() -> Self {

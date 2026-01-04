@@ -310,6 +310,37 @@ impl Hash for ChessPosition {
     }
 }
 
+impl Display for ChessPosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for r in (0..ChessGame::BOARD_SIZE).rev() {
+            for file in 0..ChessGame::BOARD_SIZE {
+                let sq = chess::Square::make_square(chess::Rank::from_index(r), chess::File::from_index(file));
+                match self.board.piece_on(sq) {
+                    Some(piece) => {
+                        let mut c = match piece {
+                            chess::Piece::Pawn => 'P',
+                            chess::Piece::Knight => 'N',
+                            chess::Piece::Bishop => 'B',
+                            chess::Piece::Rook => 'R',
+                            chess::Piece::Queen => 'Q',
+                            chess::Piece::King => 'K',
+                        };
+                        if self.board.color_on(sq).unwrap() == chess::Color::Black {
+                            c = c.to_lowercase().next().unwrap();
+                        }
+                        write!(f, "{} ", c)?;
+                    }
+                    None => {
+                        write!(f, ". ")?;
+                    }
+                }
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 impl Position for ChessPosition {
     type Game = ChessGame;
     fn new() -> Self {

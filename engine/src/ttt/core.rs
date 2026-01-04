@@ -183,6 +183,23 @@ impl TttPosition {
     }
 }
 
+impl Display for TttPosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for r in 0..TttGame::BOARD_SIZE {
+            for c in 0..TttGame::BOARD_SIZE {
+                let ch = match self.get_tile(r, c) {
+                    None => '_',
+                    Some(GameColor::Player1) => 'X',
+                    Some(GameColor::Player2) => 'O',
+                };
+                write!(f, "{} ", ch)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 impl Position for TttPosition {
     type Game = TttGame;
 
