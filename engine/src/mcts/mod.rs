@@ -46,12 +46,12 @@ struct MctsEdge<Move> {
 }
 
 impl<Move> MctsEdge<Move> {
-    pub fn new(m: Move, init_score: f32) -> Self {
+    pub fn new(m: Move, prior: f32, score: f32) -> Self {
         Self {
             m,
-            init_score,
+            init_score: prior,
             simulations_n: 0,
-            score_w: 0.0,
+            score_w: score,
         }
     }
 }
@@ -241,11 +241,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
     }
 
     fn calc_selection_heuristic(&self, edge: &MctsEdge<Game::Move>, parent_simcount: u32) -> f32 {
-        let exploit = if edge.simulations_n == 0 {
-            0.0
-        } else {
-            edge.score_w / edge.simulations_n as f32
-        };
+        let exploit = edge.score_w / edge.simulations_n.max(1) as f32;
 
         let explore =
             self.explore_factor * edge.init_score * ((parent_simcount as f32).sqrt() / (1 + edge.simulations_n) as f32);
@@ -269,10 +265,22 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             }
         );
 
-        for (m, p) in per_move_init_score {
+        for (m, prior) in per_move_init_score {
             let leaf_pos = parent_pos.moved_position(m.clone());
+            let (score, prior) = match leaf_pos.status() {
+                GameStatus::Ongoing => (0.0, prior),
+                GameStatus::Finished(game_color) => {
+                    let score = GameColor::to_signed_one(game_color) as f32;
+                    let score = match parent_pos.turn() {
+                        GameColor::Player1 => score,
+                        GameColor::Player2 => -score,
+                    };
+                    (score, 0.0)
+                }
+            };
             let leaf_id = self.search_tree.add_node(MctsNode::from_position(leaf_pos));
-            self.search_tree.add_edge(parent_id, leaf_id, MctsEdge::new(m, p));
+            self.search_tree
+                .add_edge(parent_id, leaf_id, MctsEdge::new(m, prior, score));
         }
     }
 
