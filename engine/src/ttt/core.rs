@@ -136,12 +136,6 @@ impl TttPosition {
         None
     }
 
-    pub fn make_move_new(&self, m: TttMove) -> Self {
-        let mut res = *self;
-        res.make_move(m);
-        res
-    }
-
     pub fn make_move(&mut self, m: TttMove) {
         assert!(self.is_valid_move(m));
 
@@ -218,7 +212,6 @@ impl Position for TttPosition {
     }
 
     fn moved_position(&self, m: TttMove) -> Self {
-        assert!(self.is_valid_move(m));
         let mut res = *self;
         res.make_move(m);
         res
@@ -272,7 +265,7 @@ impl Game for TttGame {
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
-        self.pos_history.push(self.position().make_move_new(next_move));
+        self.pos_history.push(self.position().moved_position(next_move));
     }
 }
 
