@@ -43,7 +43,7 @@ pub trait Game: Sized {
     }
 }
 
-pub trait Position: Clone + Eq + Hash + Debug + Send + Sync {
+pub trait Position: Clone + Eq + Hash + Debug + Display + Send + Sync {
     type Game: Game<Position = Self>;
 
     fn new() -> Self;

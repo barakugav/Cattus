@@ -57,7 +57,7 @@ pub fn cli_print_hex_board<const BOARD_SIZE: usize>(pos: &HexPosition<BOARD_SIZE
                 })
             })
             .collect();
-        let spaces = " ".repeat(BOARD_SIZE - r - 1);
+        let spaces = " ".repeat(r);
         println!("{}{}", spaces, row_characters.join(" "));
     }
 }

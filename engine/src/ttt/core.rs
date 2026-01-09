@@ -136,12 +136,6 @@ impl TttPosition {
         None
     }
 
-    pub fn make_move_new(&self, m: TttMove) -> Self {
-        let mut res = *self;
-        res.make_move(m);
-        res
-    }
-
     pub fn make_move(&mut self, m: TttMove) {
         assert!(self.is_valid_move(m));
 
@@ -189,6 +183,23 @@ impl TttPosition {
     }
 }
 
+impl Display for TttPosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for r in 0..TttGame::BOARD_SIZE {
+            for c in 0..TttGame::BOARD_SIZE {
+                let ch = match self.get_tile(r, c) {
+                    None => '_',
+                    Some(GameColor::Player1) => 'X',
+                    Some(GameColor::Player2) => 'O',
+                };
+                write!(f, "{} ", ch)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 impl Position for TttPosition {
     type Game = TttGame;
 
@@ -218,7 +229,6 @@ impl Position for TttPosition {
     }
 
     fn moved_position(&self, m: TttMove) -> Self {
-        assert!(self.is_valid_move(m));
         let mut res = *self;
         res.make_move(m);
         res
@@ -272,7 +282,7 @@ impl Game for TttGame {
     }
 
     fn play_single_turn(&mut self, next_move: Self::Move) {
-        self.pos_history.push(self.position().make_move_new(next_move));
+        self.pos_history.push(self.position().moved_position(next_move));
     }
 }
 

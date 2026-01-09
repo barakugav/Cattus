@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use cattus::game::{Bitboard, Game as _, GameColor, Position};
 use cattus::hex::{HexBitboard, HexPosition};
 use cattus::ttt::{TttGame, TttPosition};
+use itertools::Itertools;
 
 pub fn ttt_position_from_str(s: &str) -> TttPosition {
     assert_eq!(
@@ -34,33 +35,35 @@ pub fn ttt_position_from_str(s: &str) -> TttPosition {
 }
 
 pub fn hex_position_from_str<const BOARD_SIZE: usize>(s: &str) -> HexPosition<BOARD_SIZE> {
-    assert_eq!(
-        s.chars().count(),
-        BOARD_SIZE * BOARD_SIZE + 1,
-        "unexpected string length"
-    );
+    let s = s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+    assert_eq!(s.len(), BOARD_SIZE * BOARD_SIZE + 1, "unexpected string length");
+    let lines = s
+        .chars()
+        .chunks(BOARD_SIZE)
+        .into_iter()
+        .map(|chunk| chunk.into_iter().collect_vec())
+        .collect_vec();
+    let board_lines = &lines[..BOARD_SIZE];
+    let last_line = &lines[BOARD_SIZE];
 
     let mut board_red = HexBitboard::new();
     let mut board_blue = HexBitboard::new();
-    let mut turn = None;
-    for (idx, c) in s.chars().enumerate() {
-        match idx.cmp(&(BOARD_SIZE * BOARD_SIZE)) {
-            Ordering::Less => match c {
-                'e' => {}
-                'r' => board_red.set(idx, true),
-                'b' => board_blue.set(idx, true),
+    for (row, line) in board_lines.iter().enumerate() {
+        for (col, c) in line.iter().enumerate() {
+            match c {
+                'e' | '.' => {}
+                'r' => board_red.set(row * BOARD_SIZE + col, true),
+                'b' => board_blue.set(row * BOARD_SIZE + col, true),
                 _ => panic!("unknown board char: {:?}", c),
-            },
-            Ordering::Equal => {
-                turn = Some(match c {
-                    'r' => GameColor::Player1,
-                    'b' => GameColor::Player2,
-                    _ => panic!("unknown turn char: {:?}", c),
-                })
             }
-            Ordering::Greater => panic!("Too many chars in position string"),
         }
     }
 
-    HexPosition::new_from_board(board_red, board_blue, turn.unwrap())
+    let turn = match last_line[0] {
+        'r' => GameColor::Player1,
+        'b' => GameColor::Player2,
+        unknown_turn_char => panic!("unknown turn char: {:?}", unknown_turn_char),
+    };
+
+    HexPosition::new_from_board(board_red, board_blue, turn)
 }
