@@ -394,7 +394,7 @@ mod tests {
 
     use crate::game::player::{GamePlayer, PlayerRand};
     use crate::game::{Bitboard, Game, GameColor, GameStatus, Move, Position};
-    use crate::hex::{HexBitboard, HexGameStandard, HexPosition};
+    use crate::hex::{HexBitboard, HexGameStandard, HexMove, HexPosition};
 
     type HexStandardPosition = <HexGameStandard as Game>::Position;
 
@@ -430,7 +430,6 @@ mod tests {
                        b . . . . . . . . . .\
             r",
         );
-
         assert_eq!(pos.status(), GameStatus::Finished(Some(GameColor::Player2)));
     }
 
@@ -505,24 +504,180 @@ mod tests {
     }
 
     #[test]
+    fn board4() {
+        let mut rand = StdRng::seed_from_u64(0xb843ecbdea516a01);
+
+        let red_wins = [
+            ". . . r
+              . . r .
+               . r . .
+                r . . .",
+            ". . r .
+              . r . .
+               . r . .
+                . r . .",
+            "r . . .
+              r . . .
+               r . . .
+                r . . .",
+            ". . . r
+              . . . r
+               . . . r
+                . . . r",
+            ". . r .
+              . r . .
+               . r . .
+                r . . .",
+        ];
+        for board_str in red_wins {
+            let pos = hex_position_from_str::<4>(&format!("{}b", board_str));
+            assert_eq!(
+                pos.status(),
+                GameStatus::Finished(Some(GameColor::Player1)),
+                "board:\n{pos}"
+            );
+
+            for _ in 0..100 {
+                let red = pos.pieces_red();
+                let mut blue = pos.pieces_blue();
+                for idx in 0..16 {
+                    if !red.get(idx) && !blue.get(idx) && rand.random::<bool>() {
+                        blue.set(idx, true);
+                    }
+                }
+                let pos = HexPosition::new_from_board(red, blue, GameColor::Player2);
+                assert_eq!(
+                    pos.status(),
+                    GameStatus::Finished(Some(GameColor::Player1)),
+                    "board:\n{pos}"
+                );
+
+                let mut red_indices = pos.pieces_red().clone();
+                while !red_indices.is_empty() {
+                    let idx = red_indices.get_raw().trailing_zeros() as usize;
+                    red_indices.set(idx, false);
+
+                    let mut red = pos.pieces_red();
+                    let blue = pos.pieces_blue();
+                    red.set(idx, false);
+                    let pos = HexPosition::new_from_board(red, blue, GameColor::Player1);
+                    assert_eq!(pos.status(), GameStatus::Ongoing, "board:\n{pos}");
+
+                    let pos = pos.moved_position(HexMove::from_idx(idx));
+                    assert_eq!(
+                        pos.status(),
+                        GameStatus::Finished(Some(GameColor::Player1)),
+                        "board:\n{pos}"
+                    );
+                }
+            }
+        }
+
+        let blue_wins = [
+            ". . . b
+              . . b .
+               . b . .
+                b . . .",
+            ". . . .
+              . . . b
+               . b b .
+                b . . .",
+            ". . . .
+              b b b b
+               . . . .
+                . . . .",
+            "b b b .
+              . . b .
+               . . b b
+                . . . .",
+            ". . . b
+              . . b .
+               . . b .
+                b b . .",
+        ];
+        for board_str in blue_wins {
+            let pos = hex_position_from_str::<4>(&format!("{}r", board_str));
+            assert_eq!(
+                pos.status(),
+                GameStatus::Finished(Some(GameColor::Player2)),
+                "board:\n{pos}"
+            );
+
+            for _ in 0..100 {
+                let blue = pos.pieces_blue();
+                let mut red = pos.pieces_red();
+                for idx in 0..16 {
+                    if !red.get(idx) && !blue.get(idx) && rand.random::<bool>() {
+                        red.set(idx, true);
+                    }
+                }
+                let pos = HexPosition::new_from_board(red, blue, GameColor::Player1);
+                assert_eq!(
+                    pos.status(),
+                    GameStatus::Finished(Some(GameColor::Player2)),
+                    "board:\n{pos}"
+                );
+
+                let mut blue_indices = pos.pieces_blue().clone();
+                while !blue_indices.is_empty() {
+                    let idx = blue_indices.get_raw().trailing_zeros() as usize;
+                    blue_indices.set(idx, false);
+
+                    let red = pos.pieces_red();
+                    let mut blue = pos.pieces_blue();
+                    blue.set(idx, false);
+                    let pos = HexPosition::new_from_board(red, blue, GameColor::Player2);
+                    assert_eq!(pos.status(), GameStatus::Ongoing, "board:\n{pos}");
+
+                    let pos = pos.moved_position(HexMove::from_idx(idx));
+                    assert_eq!(
+                        pos.status(),
+                        GameStatus::Finished(Some(GameColor::Player2)),
+                        "board:\n{pos}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn flip() {
-        let pos: HexStandardPosition = hex_position_from_str(
-            ". . b . . . . . . . r\
-              . . . . . . . . . . .\
-               . . . . b . . . r . .\
-                . . . . . . . r . . .\
-                 . . . . . . r . . . .\
-                  . . . . . r . . . . .\
-                   . . . . r . b . . . .\
-                    . . . r . . . . . . .\
-                     . . r . . . r . . . .\
-                      . r . . . . . . . . .\
-                       r . . . . . b . . . .\
+        let pos = hex_position_from_str::<4>(
+            ". . r b
+              . b r .
+               b . r .
+                . r . .
             b",
         );
+
         assert_eq!(pos.turn(), GameColor::Player2);
+        assert_eq!(pos.status(), GameStatus::Finished(Some(GameColor::Player1)));
+
         assert_eq!(pos.flipped().turn(), GameColor::Player1);
+        assert_eq!(pos.flipped().status(), GameStatus::Finished(Some(GameColor::Player2)));
+
         assert_eq!(pos.flipped().flipped(), pos);
+
+        let mut red_indices = pos.pieces_red().clone();
+        while !red_indices.is_empty() {
+            let idx = red_indices.get_raw().trailing_zeros() as usize;
+            red_indices.set(idx, false);
+
+            let mut red = pos.pieces_red();
+            let blue = pos.pieces_blue();
+            red.set(idx, false);
+            let pos = HexPosition::new_from_board(red, blue, GameColor::Player1);
+            assert_eq!(pos.status(), GameStatus::Ongoing);
+            let move_ = HexMove::from_idx(idx);
+
+            let f_pos = pos.flipped();
+            assert_eq!(f_pos.status(), GameStatus::Ongoing);
+            let f_pos = f_pos.moved_position(move_.flipped());
+            assert_eq!(f_pos.status(), GameStatus::Finished(Some(GameColor::Player2)));
+
+            assert_eq!(pos.moved_position(move_).flipped(), f_pos);
+            assert_eq!(pos.moved_position(move_), f_pos.flipped());
+        }
     }
 
     #[test]
