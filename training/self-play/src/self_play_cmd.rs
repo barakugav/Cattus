@@ -34,6 +34,8 @@ struct SelfPlayArgs {
     seed: Option<u64>,
     #[clap(long, value_parser = log_level_parser, default_value = "Info")]
     log_level: log::LevelFilter,
+    #[clap(long)]
+    show_games: Option<bool>,
 }
 
 #[derive(serde::Deserialize)]
@@ -118,11 +120,13 @@ where
         ..player1_params.clone()
     };
 
-    let result = SelfPlayRunner::new(player1_params, player2_params, config.threads).generate_data(
-        args.games_num as usize,
-        &args.out_dir1,
-        &args.out_dir2,
-    )?;
+    let result = SelfPlayRunner::new(
+        player1_params,
+        player2_params,
+        config.threads,
+        args.show_games.unwrap_or(false),
+    )
+    .generate_data(args.games_num as usize, &args.out_dir1, &args.out_dir2)?;
 
     if let Some(summary_file) = args.summary_file {
         let mut metrics = HashMap::new();

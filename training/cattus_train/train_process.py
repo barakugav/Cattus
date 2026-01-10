@@ -211,6 +211,7 @@ class TrainProcess:
             logger.warning("No training data in %s, skipping training", train_data_dir)
             return models
 
+        self.iter_num = iter_num
         lr = self._lr_scheduler.get_lr(iter_num)
         logger.debug("Training models with learning rate %f", lr)
 
@@ -389,6 +390,8 @@ class TrainProcess:
                         shutil.move(trained_games_dir / filename, best_games_dir)
                 elif len(latest_models) == 1 and losing > self.cfg.self_play.model_compare.warning_losing_threshold:
                     logger.warning("New model is worse than previous one, losing ratio: %f", losing)
+                if self.iter_num >= 3:
+                    raise NotImplementedError("Fixme - winner handling in self play")
         return best_model
 
     def _compare_model_impl(self, model1_dir: Path, model2_dir: Path, model1_games_dir: Path, model2_games_dir: Path):
@@ -412,6 +415,7 @@ class TrainProcess:
                     f"--out-dir2={model2_games_dir}",
                     f"--summary-file={compare_res_file}",
                     f"--config-file={cfg_file}",
+                    f"--show-games={str(self.iter_num >= 3).lower()}",
                 ],
                 env=runtime_env(engine_cfg, os.environ.copy()),
                 cwd=SELF_PLAY_CRATE_DIR,

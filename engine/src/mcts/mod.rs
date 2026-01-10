@@ -7,6 +7,8 @@ use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;
 use rand_distr::multi::{Dirichlet, MultiDistribution};
 use std::collections::{HashMap, HashSet};
+use std::iter::FromIterator;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -14,6 +16,8 @@ use crate::game::player::GamePlayer;
 use crate::game::{GameColor, GameStatus, Position};
 use crate::mcts::value_func::ValueFunction;
 use crate::util::metric::RunningAverage;
+
+static DEBUG: AtomicBool = AtomicBool::new(false);
 
 /// Monte Carlo Tree Search (MCTS) implementation
 
@@ -179,6 +183,15 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             };
             let leaf_pos = &self.search_tree[leaf_id].position;
 
+            if DEBUG.load(std::sync::atomic::Ordering::SeqCst) {
+                println!(
+                    "path to selection: {:?}",
+                    path_to_selection
+                        .iter()
+                        .map(|e| format!("{:?}={}", e, &self.search_tree.edge_weight(*e).unwrap().m))
+                        .collect_vec()
+                );
+            }
             let eval = if repetition_reached {
                 0.0
             } else if let GameStatus::Finished(winner) = leaf_pos.status() {
@@ -221,6 +234,24 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
                 .edges(node_id)
                 .map(|edge| edge.weight().simulations_n)
                 .sum::<u32>();
+
+            if DEBUG.load(std::sync::atomic::Ordering::SeqCst) {
+                println!(
+                    "At node (id {}) with turn {:?} and simcount {}",
+                    node_id.index(),
+                    node.position.turn(),
+                    node_simcount
+                );
+                for edge in self.search_tree.edges(node_id) {
+                    let val = self.calc_selection_heuristic(edge.weight(), node_simcount);
+                    println!(
+                        "\tSelection heuristic for edge {:?} (move {}): {:.5}",
+                        edge.id(),
+                        edge.weight().m,
+                        val
+                    );
+                }
+            }
 
             /* Node is not a leaf, choose best child and continue in it's sub tree */
             let edge = self
@@ -350,7 +381,8 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         }
     }
 
-    pub fn calc_moves_probabilities(&mut self, pos_history: &[Game::Position]) -> Vec<(Game::Move, f32)> {
+    pub fn calc_moves_probabilities(&mut self, pos_history: &[Game::Position], debug: bool) -> Vec<(Game::Move, f32)> {
+        DEBUG.store(true, std::sync::atomic::Ordering::SeqCst);
         let search_start_time = Instant::now();
         let position = pos_history.last().unwrap();
 
@@ -406,7 +438,49 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         self.search_duration_metric
             .set(search_start_time.elapsed().as_secs_f64());
 
+        if DEBUG.load(std::sync::atomic::Ordering::SeqCst) {
+            println!("Current position:\n{}", position);
+            println!("Current turn: {:?}", position.turn());
+            // print tree for debugging
+            println!("MCTS Search Tree:");
+            self.print_tree(self.root.unwrap(), 0);
+
+            if true {
+                panic!()
+            }
+        }
+
         res
+    }
+
+    fn print_tree(&self, node: NodeIndex, depth: usize) {
+        let indent = "  ".repeat(depth);
+        let node_data = &self.search_tree[node];
+        println!(
+            "{indent}Node: (id {}) (turn {:?}) (status {:?}) \n{}",
+            node.index(),
+            node_data.position.turn(),
+            node_data.position.status(),
+            node_data.position
+        );
+        for edge in self
+            .search_tree
+            .edges(node)
+            .sorted_by_key(|e| e.weight().simulations_n)
+            .rev()
+        {
+            let edge_data = edge.weight();
+            println!(
+                "{indent}  Edge (id {:?}): Move {}, n {}, w {:.3} ({} -> {})",
+                edge.id(),
+                edge_data.m,
+                edge_data.simulations_n,
+                edge_data.score_w,
+                node.index(),
+                edge.target().index()
+            );
+            self.print_tree(edge.target(), depth + 2);
+        }
     }
 
     pub fn choose_move_from_probabilities(
@@ -474,7 +548,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
 
 impl<Game: crate::game::Game> GamePlayer<Game> for MctsPlayer<Game> {
     fn next_move(&mut self, pos_history: &[Game::Position]) -> Option<Game::Move> {
-        let moves = self.calc_moves_probabilities(pos_history);
+        let moves = self.calc_moves_probabilities(pos_history, false);
         self.choose_move_from_probabilities(pos_history, &moves)
     }
 }

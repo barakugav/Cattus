@@ -22,6 +22,7 @@ pub struct SelfPlayRunner<Game: cattus::game::Game> {
     player1_params: MctsParams<Game>,
     player2_params: MctsParams<Game>,
     thread_num: NonZeroUsize,
+    show_games: bool,
 }
 
 impl<Game> SelfPlayRunner<Game>
@@ -29,11 +30,17 @@ where
     Game: cattus::game::Game + 'static,
     DataEntry<Game>: ToBytes,
 {
-    pub fn new(player1_params: MctsParams<Game>, player2_params: MctsParams<Game>, thread_num: u32) -> Self {
+    pub fn new(
+        player1_params: MctsParams<Game>,
+        player2_params: MctsParams<Game>,
+        thread_num: u32,
+        show_games: bool,
+    ) -> Self {
         Self {
             player1_params,
             player2_params,
             thread_num: NonZeroUsize::new(thread_num as usize).unwrap(),
+            show_games,
         }
     }
 
@@ -65,8 +72,13 @@ where
                 output_dir2.to_path_buf(),
             ),
         );
-        log::debug!("Spawning {} self-play workers", self.thread_num);
-        for thread_idx in 0..self.thread_num.get() {
+        let mut thread_num = self.thread_num.get();
+        if self.show_games {
+            log::info!("Show games is enabled, using single thread for self-play");
+            thread_num = 1;
+        }
+        log::debug!("Spawning {} self-play workers", thread_num);
+        for thread_idx in 0..thread_num {
             let [player1_params, player2_params] = [self.player1_params.clone(), self.player2_params.clone()]
                 .into_iter()
                 .enumerate()
@@ -87,6 +99,7 @@ where
                     task_receiver.clone(),
                     results_sender.clone(),
                     data_entry_sender.clone(),
+                    self.show_games,
                 ),
             );
         }
@@ -126,13 +139,18 @@ where
     }
 
     fn self_play_worker_main(
-        player1_params: MctsParams<Game>,
-        player2_params: MctsParams<Game>,
+        mut player1_params: MctsParams<Game>,
+        mut player2_params: MctsParams<Game>,
         task_channel: Receiver<SelfPlayTask>,
         results_channel: Sender<Option<GameColor>>,
         data_entry_channel: Sender<(GameColor, DataEntry<Game>)>,
+        show_games: bool,
     ) -> impl FnOnce(ThreadControl) + Send + 'static {
         move |control| {
+            if !show_games {
+                player1_params.sim_num = 8;
+                player2_params.sim_num = 8;
+            }
             let mut player1 = MctsPlayer::new(player1_params);
             let mut player2 = MctsPlayer::new(player2_params);
 
@@ -159,6 +177,9 @@ where
                 let mut game = Game::new();
                 let mut pos_probs_pairs = Vec::new();
                 let players_switch = task.game_idx % 2 == 1;
+                if show_games {
+                    log::info!("Starting game {} (players_switch={players_switch})", task.game_idx);
+                }
 
                 let winner = loop {
                     if control.termination_receiver().try_recv().is_ok() {
@@ -180,10 +201,20 @@ where
                     };
 
                     /* Generate probabilities from MCTS player */
-                    let moves = player.calc_moves_probabilities(game.pos_history());
+                    let moves = player.calc_moves_probabilities(game.pos_history(), show_games);
                     let next_move = player
                         .choose_move_from_probabilities(game.pos_history(), &moves)
                         .unwrap();
+
+                    if show_games {
+                        println!(
+                            "[{}] Player {:?} plays move {:?} position:\n{}",
+                            game.pos_history().len(),
+                            player_idx,
+                            next_move,
+                            game.position()
+                        );
+                    }
 
                     /* Store probabilities */
                     pos_probs_pairs.push((player_idx, game.position().clone(), moves));
@@ -191,6 +222,14 @@ where
                     /* Advance game position */
                     game.play_single_turn(next_move);
                 };
+                if show_games {
+                    println!(
+                        "Game {} finished, winner: {:?} final position:\n{}\n",
+                        task.game_idx,
+                        winner,
+                        game.position()
+                    );
+                }
 
                 /* Save all data entries */
                 for (player_idx, pos, probs) in pos_probs_pairs {
