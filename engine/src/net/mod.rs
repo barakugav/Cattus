@@ -78,7 +78,8 @@ impl<Game: crate::game::Game> NNetwork<Game> {
         let (position, is_flipped) = flip_pos_if_needed(position.clone());
 
         let res = if let Some(cache) = &self.cache {
-            cache.get_or_compute(&position, |pos| self.evaluate_impl(pos))
+            // cache.get_or_compute(&position, |pos| self.evaluate_impl(pos))
+            self.evaluate_impl(&position)
         } else {
             self.evaluate_impl(&position)
         };
@@ -107,7 +108,8 @@ pub fn calc_moves_probs<Game: crate::game::Game>(
     moves: Vec<Game::Move>,
     move_scores: &[f32],
 ) -> Vec<(Game::Move, f32)> {
-    let moves_scores = moves.iter().map(|m| move_scores[m.to_nn_idx()]).collect::<Vec<_>>();
+    // let moves_scores = moves.iter().map(|m| move_scores[m.to_nn_idx()]).collect::<Vec<_>>();
+    let moves_scores = moves.iter().map(|m| 1.0).collect_vec();
 
     // Softmax normalization
     let max_p = moves_scores.iter().copied().fold(f32::MIN, f32::max);

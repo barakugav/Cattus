@@ -102,16 +102,17 @@ class DataSet(Dataset):
         entry.probs = probs.flatten()
 
     def _transform_hex(self, entry: DataEntry):
-        planes, probs = entry.planes, entry.probs
-        probs = probs.reshape((self._game.BOARD_SIZE, self._game.BOARD_SIZE))
+        pass
+        # planes, probs = entry.planes, entry.probs
+        # probs = probs.reshape((self._game.BOARD_SIZE, self._game.BOARD_SIZE))
 
-        # Rotate 180
-        if random.random() < 0.5:
-            planes = np.flip(planes, axis=(1, 2))
-            probs = np.flip(probs, axis=(0, 1))
+        # # Rotate 180
+        # if random.random() < 0.5:
+        #     planes = np.flip(planes, axis=(1, 2))
+        #     probs = np.flip(probs, axis=(0, 1))
 
-        entry.planes = planes
-        entry.probs = probs.flatten()
+        # entry.planes = planes
+        # entry.probs = probs.flatten()
 
     def _transform_chess(self, entry: DataEntry):
         planes = entry.planes

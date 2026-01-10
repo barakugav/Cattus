@@ -358,12 +358,12 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             // Tree was saved from the last search
             // Look for the position in the first three layers of the tree
             // TODO consider increasing depth limit
-            if let Some(node) = self.find_node_with_position(position, 3) {
-                self.remove_all_but_subtree(node);
-            } else {
-                self.search_tree.clear();
-                self.root = None;
-            }
+            // if let Some(node) = self.find_node_with_position(position, 3) {
+            //     self.remove_all_but_subtree(node);
+            // } else {
+            self.search_tree.clear();
+            self.root = None;
+            // }
         }
 
         if self.root.is_none() {
@@ -392,6 +392,16 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             .into_iter()
             .map(|(m, simcount)| (m, simcount as f32 / simcount_total as f32))
             .collect::<Vec<_>>();
+
+        // println!("MCTS move probabilities:");
+        // for (e, (m, p)) in self.search_tree.edges(self.root.unwrap()).zip_eq(&res) {
+        //     println!(
+        //         "  Move: {}, Probability: {:.2}, Score: {:.2}",
+        //         m,
+        //         p,
+        //         e.weight().score_w / e.weight().simulations_n.max(1) as f32
+        //     );
+        // }
 
         self.search_duration_metric
             .set(search_start_time.elapsed().as_secs_f64());
