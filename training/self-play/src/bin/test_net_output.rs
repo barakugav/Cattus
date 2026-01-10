@@ -1,9 +1,8 @@
 use cattus::chess::{ChessGame, ChessPosition};
 use cattus::hex::HexGame;
 use cattus::net::model::{InferenceConfig, Model};
-use cattus::net::planes_to_tensor;
+use cattus::net::{planes_to_tensor, ToPlanes};
 use cattus::ttt::TttGame;
-use cattus::{chess, hex, ttt};
 use cattus_self_play::test_util::{hex_position_from_str, ttt_position_from_str};
 use clap::Parser;
 use ndarray::{Array2, ArrayD, Axis};
@@ -50,7 +49,7 @@ fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
     let mut model = Model::new(&args.model_path, InferenceConfig::default());
     let outputs = (0..args.repeat)
         .map(|_| {
-            let samples = ttt::net::position_to_planes(&pos);
+            let samples = pos.to_planes();
             let tensor = planes_to_tensor::<TttGame>(&[samples], args.batch_size);
             model.run(vec![tensor.into_dyn()])
         })
@@ -71,7 +70,7 @@ fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
     let mut model = Model::new(&args.model_path, InferenceConfig::default());
     let outputs = (0..args.repeat)
         .map(|_| {
-            let samples = hex::net::position_to_planes(&pos);
+            let samples = pos.to_planes();
             let tensor = planes_to_tensor::<HexGame<BOARD_SIZE>>(&[samples], args.batch_size);
             model.run(vec![tensor.into_dyn()])
         })
@@ -93,7 +92,7 @@ fn run_net_chess(args: &Args) -> Vec<ArrayD<f32>> {
 
     let outputs = (0..args.repeat)
         .map(|_| {
-            let samples = chess::net::position_to_planes(&pos);
+            let samples = pos.to_planes();
             let tensor = planes_to_tensor::<ChessGame>(&[samples], args.batch_size);
             model.run(vec![tensor.into_dyn()])
         })

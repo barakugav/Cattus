@@ -71,27 +71,25 @@ impl<Game: crate::game::Game> NNetwork<Game> {
         ret
     }
 
-    pub fn evaluate(
-        &self,
-        position: &Game::Position,
-        to_planes: impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
-    ) -> (Vec<(Game::Move, f32)>, f32) {
+    pub fn evaluate(&self, position: &Game::Position) -> (Vec<(Game::Move, f32)>, f32)
+    where
+        Game::Position: ToPlanes<Game = Game>,
+    {
         let (position, is_flipped) = flip_pos_if_needed(position.clone());
 
         let res = if let Some(cache) = &self.cache {
-            cache.get_or_compute(&position, |pos| self.evaluate_impl(pos, &to_planes))
+            cache.get_or_compute(&position, |pos| self.evaluate_impl(pos))
         } else {
-            self.evaluate_impl(&position, &to_planes)
+            self.evaluate_impl(&position)
         };
 
         flip_score_if_needed(res, is_flipped)
     }
-    fn evaluate_impl(
-        &self,
-        pos: &Game::Position,
-        to_planes: &impl Fn(&Game::Position) -> Vec<Game::Bitboard>,
-    ) -> (Vec<(Game::Move, f32)>, f32) {
-        let planes = to_planes(pos);
+    fn evaluate_impl(&self, pos: &Game::Position) -> (Vec<(Game::Move, f32)>, f32)
+    where
+        Game::Position: ToPlanes<Game = Game>,
+    {
+        let planes = pos.to_planes();
 
         let batch_deadline = Duration::from_secs_f64(self.metrics.lock().unwrap().run_duration.get());
         let batch_deadline = batch_deadline.min(Duration::from_millis(20));
@@ -182,4 +180,9 @@ pub fn flip_score_if_needed<Move: crate::game::Move>(
 struct Metrics {
     activation_count: metrics::Counter,
     run_duration: RunningAverage,
+}
+
+pub trait ToPlanes {
+    type Game: crate::game::Game;
+    fn to_planes(&self) -> Vec<<Self::Game as crate::game::Game>::Bitboard>;
 }

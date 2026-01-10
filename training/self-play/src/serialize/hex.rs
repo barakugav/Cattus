@@ -1,6 +1,7 @@
 use crate::serialize::{generic_entry_to_bytes, DataEntry, ToBytes};
 use cattus::game::{GameColor, Position};
 use cattus::hex::HexGame;
+use cattus::net::ToPlanes;
 
 impl<const BOARD_SIZE: usize> ToBytes for DataEntry<HexGame<BOARD_SIZE>> {
     fn to_bytes(&self) -> Vec<u8> {
@@ -9,7 +10,9 @@ impl<const BOARD_SIZE: usize> ToBytes for DataEntry<HexGame<BOARD_SIZE>> {
         assert_eq!(self.pos.turn(), GameColor::Player1);
 
         #[allow(clippy::identity_op)]
-        let planes = cattus::hex::net::position_to_planes(&self.pos)
+        let planes = self
+            .pos
+            .to_planes()
             .into_iter()
             .flat_map(|p| {
                 [

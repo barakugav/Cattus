@@ -1,3 +1,5 @@
+use cattus::net::ToPlanes;
+
 use crate::serialize::{generic_entry_to_bytes, DataEntry, ToBytes};
 use cattus::game::{GameColor, Position};
 use cattus::ttt::TttGame;
@@ -8,7 +10,9 @@ impl ToBytes for DataEntry<TttGame> {
         let winner = GameColor::to_signed_one(self.winner) as i8;
         assert_eq!(self.pos.turn(), GameColor::Player1);
 
-        let planes = cattus::ttt::net::position_to_planes(&self.pos)
+        let planes = self
+            .pos
+            .to_planes()
             .iter()
             .map(|p| p.get_raw() as u64)
             .collect::<Vec<_>>();
