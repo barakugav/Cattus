@@ -66,9 +66,9 @@ training:
 
         logging.info("Checking quality of training...")
         metrics = _get_metrics(tmp_dir)
-        assert float(metrics["loss_0"]) > 0
-        assert float(metrics["value_accuracy_0"]) > 0.6
-        assert float(metrics["policy_accuracy_0"]) > 0.4
+        assert float(metrics["model0/test/loss"]) > 0
+        assert float(metrics["model0/test/value_accuracy"]) > 0.6
+        assert float(metrics["model0/test/policy_accuracy"]) > 0.4
         logging.info("Training quality is sufficient")
 
 

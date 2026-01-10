@@ -11,6 +11,7 @@ import tempfile
 import time
 from dataclasses import asdict
 from datetime import datetime, timezone
+from itertools import islice
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from typing import Optional
@@ -20,6 +21,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import tqdm
+from torch import Tensor
 from torch.utils.data import DataLoader, RandomSampler
 
 from cattus_train.chess import Chess
@@ -128,7 +130,7 @@ class TrainProcess:
         best_model = (self._load_model(self._base_model_path), self._base_model_path)
 
         # Initial training of the base model
-        if self.cfg.training.use_train_data_across_runs:
+        if self.cfg.training.use_train_data_across_runs and len(list(self.cfg.games_dir.iterdir())) > 0:
             self._metrics = {}
             [best_model] = self._train([best_model], -1)
 
@@ -196,7 +198,7 @@ class TrainProcess:
                     # "search_count": summary["metrics"]["search_count"],
                     "search_duration": summary["metrics"]["mcts.search_duration"],
                     "cache_hit_ratio": summary["metrics"]["cache.hits"]
-                    / (summary["metrics"]["cache.hits"] + summary["metrics"]["cache.misses"]),
+                    / max(1, summary["metrics"]["cache.hits"] + summary["metrics"]["cache.misses"]),
                 }
             )
 
@@ -212,9 +214,6 @@ class TrainProcess:
         lr = self._lr_scheduler.get_lr(iter_num)
         logging.debug("Training models with learning rate %f", lr)
 
-        losses = [None] * len(models)
-        value_accuracies = [None] * len(models)
-        policy_accuracies = [None] * len(models)
         training_durations = [None] * len(models)
         trained_models = [None] * len(models)
 
@@ -228,22 +227,24 @@ class TrainProcess:
             num_samples = self.cfg.training.epoch_size
             max_num_samples = len(data_set) * 4
             if num_samples > max_num_samples:
-                logging.warning(
+                logging.debug(
                     f"Requested epoch size {num_samples} is larger than available data size {len(data_set)},"
                     f" reducing epoch size to {max_num_samples}",
                 )
                 num_samples = max_num_samples
-            sampler = RandomSampler(
-                data_set,
-                replacement=True,
-                num_samples=num_samples,
-            )
-            data_loader = DataLoader(
-                data_set,
-                batch_size=self.cfg.training.batch_size,
-                sampler=sampler,
-                drop_last=True,  # avoid a size-1 final batch crashing BatchNorm
-            )
+
+            def create_data_loader():
+                sampler = RandomSampler(
+                    data_set,
+                    replacement=True,
+                    num_samples=num_samples,
+                )
+                return DataLoader(
+                    data_set,
+                    batch_size=self.cfg.training.batch_size,
+                    sampler=sampler,
+                    drop_last=True,  # avoid a size-1 final batch crashing BatchNorm
+                )
 
             for m_idx, model in model_list:
 
@@ -265,25 +266,9 @@ class TrainProcess:
 
                 model.train()
                 model.to(self.cfg.training.device)
+
+                # TODO: share optimizer between epochs
                 optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
-                final_batch = None
-                progress_bar = tqdm.tqdm(
-                    desc=f"Training model {m_idx}",
-                    total=num_samples // data_loader.batch_size,
-                    unit="batch",
-                    leave=False,
-                )
-                training_start_time = time.time()
-                for x, y in data_loader:
-                    optimizer.zero_grad()
-                    outputs = model(x)
-                    loss = loss_fn(outputs, y)
-                    loss.backward()
-                    optimizer.step()
-                    progress_bar.update(1)
-                    final_batch = (x, y)
-                train_duration = time.time() - training_start_time
-                model = model.to("cpu")
 
                 def policy_head_accuracy(output, target):
                     output, target = mask_illegal_moves(output, target)
@@ -291,19 +276,56 @@ class TrainProcess:
                     target = torch.argmax(target, dim=1)
                     return (predicted == target).float().mean()
 
+                def run_epoch(data_loader, training: bool):
+                    metrics: dict[str, list[Tensor]] = {}
+
+                    stage = "Training" if training else "Testing"
+                    data_loader = tqdm.tqdm(
+                        data_loader,
+                        desc=f"{stage} model {m_idx}",
+                        # total=num_samples // data_loader.batch_size,
+                        unit="batch",
+                        leave=False,
+                    )
+
+                    for x, y in data_loader:
+                        if training:
+                            optimizer.zero_grad()
+                        outputs = model(x)
+                        loss = loss_fn(outputs, y)
+                        if training:
+                            loss.backward()
+                            optimizer.step()
+
+                        policy_accuracy = policy_head_accuracy(outputs[0], y[0])
+                        value_accuracy = value_head_accuracy(outputs[1], y[1])
+                        metrics.setdefault("loss", []).append(loss.detach())
+                        metrics.setdefault("policy_accuracy", []).append(policy_accuracy.detach())
+                        metrics.setdefault("value_accuracy", []).append(value_accuracy.detach())
+                    return {k: torch.mean(torch.stack(v)).item() for k, v in metrics.items()}
+
+                training_start_time = time.time()
+                train_metrics = run_epoch(create_data_loader(), training=True)
+                training_durations[m_idx] = time.time() - training_start_time
+
                 with torch.no_grad():
                     model.eval()
-                    # TODO: compute metrics on more than the last batch
-                    final_x, final_y = final_batch
-                    final_x = final_x.to("cpu")
-                    final_y = (final_y[0].to("cpu"), final_y[1].to("cpu"))
-                    final_outputs = model(final_x)
-                    losses[m_idx] = loss_fn(final_outputs, final_y).detach().item()
-                    policy_accuracies[m_idx] = policy_head_accuracy(final_outputs[0], final_y[0]).detach().item()
-                    value_accuracies[m_idx] = value_head_accuracy(final_outputs[1], final_y[1]).detach().item()
-                    training_durations[m_idx] = train_duration
+                    data_loader = create_data_loader()
+                    test_batches = 20
+                    test_metrics = run_epoch(islice(data_loader, test_batches), training=False)
 
                 trained_models[m_idx] = (model, self._save_model(model))
+
+                for k, v in train_metrics.items():
+                    self._metrics[f"model{m_idx}/train/{k}"] = v
+                for k, v in test_metrics.items():
+                    self._metrics[f"model{m_idx}/test/{k}"] = v
+
+                train_metrics_str = "\n".join([f"\t\t{key}: {value:.4f}" for key, value in train_metrics.items()])
+                test_metrics_str = "\n".join([f"\t\t{key}: {value:.4f}" for key, value in test_metrics.items()])
+                logging.info(
+                    f"Model{m_idx}\n\ttraining metrics:\n{train_metrics_str}\n\ttesting metrics:\n{test_metrics_str}"
+                )
 
         models = [(idx, model) for idx, (model, _model_path) in enumerate(models)]
         workers_num = min(self.cfg.training.threads, len(models))
@@ -321,19 +343,6 @@ class TrainProcess:
             # Train on a single CPU thread
             train_models(models)
 
-        for model_idx in range(len(models)):
-            logging.info(f"Model{model_idx} training metrics:")
-            logging.info(f"\tLoss            {losses[model_idx]:.4f}")
-            logging.info(f"\tValue accuracy  {value_accuracies[model_idx]:.4f}")
-            logging.info(f"\tPolicy accuracy {policy_accuracies[model_idx]:.4f}")
-
-            self._metrics.update(
-                {
-                    f"loss_{model_idx}": losses[model_idx],
-                    f"value_accuracy_{model_idx}": value_accuracies[model_idx],
-                    f"policy_accuracy_{model_idx}": policy_accuracies[model_idx],
-                }
-            )
         self._metrics["training_duration"] = sum(training_durations)
 
         return trained_models
@@ -452,14 +461,17 @@ class TrainProcess:
 
     def _write_metrics(self, filename: Path):
         per_model_columns = [
-            # "value_loss",
-            # "policy_loss",
-            "loss",
-            "value_accuracy",
-            "policy_accuracy",
-            "trained_model_win_rate",
+            [
+                f"model{m_idx}/train/loss",
+                f"model{m_idx}/train/value_accuracy",
+                f"model{m_idx}/train/policy_accuracy",
+                f"model{m_idx}/test/loss",
+                f"model{m_idx}/test/value_accuracy",
+                f"model{m_idx}/test/policy_accuracy",
+                f"trained_model_win_rate_{m_idx}",
+            ]
+            for m_idx in range(self.cfg.model_num)
         ]
-        per_model_columns = [[f"{col}_{m_idx}" for col in per_model_columns] for m_idx in range(self.cfg.model_num)]
         columns = [
             "net_run_duration_average_us",
             "batch_size_average",

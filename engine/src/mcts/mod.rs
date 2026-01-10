@@ -170,7 +170,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             let path_to_selection = self.select();
 
             let repetition_reached = self.detect_repetition(pos_history, &path_to_selection);
-            let leaf_id: NodeIndex = if path_to_selection.is_empty() {
+            let leaf_id = if path_to_selection.is_empty() {
                 self.root.unwrap()
             } else {
                 let (_e_source, e_target) = self
@@ -207,7 +207,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
 
     /* Return path to selected leaf node */
     fn select(&self) -> Vec<EdgeIndex> {
-        let mut path: Vec<EdgeIndex> = vec![];
+        let mut path = Vec::<EdgeIndex>::new();
 
         let mut node_id = self.root.unwrap();
         loop {

@@ -1,6 +1,7 @@
 use crossbeam::channel::{Receiver, Sender};
 use std::fs;
 use std::io::Write;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
 use cattus::game::{GameColor, GameStatus, Position};
@@ -20,7 +21,7 @@ pub struct GamesResults {
 pub struct SelfPlayRunner<Game: cattus::game::Game> {
     player1_params: MctsParams<Game>,
     player2_params: MctsParams<Game>,
-    thread_num: usize,
+    thread_num: NonZeroUsize,
 }
 
 impl<Game> SelfPlayRunner<Game>
@@ -29,11 +30,10 @@ where
     DataEntry<Game>: ToBytes,
 {
     pub fn new(player1_params: MctsParams<Game>, player2_params: MctsParams<Game>, thread_num: u32) -> Self {
-        assert!(thread_num > 0);
         Self {
             player1_params,
             player2_params,
-            thread_num: thread_num as usize,
+            thread_num: NonZeroUsize::new(thread_num as usize).unwrap(),
         }
     }
 
@@ -47,7 +47,7 @@ where
 
         /* Create output dir if doesn't exists */
         for output_dir in [output_dir1, output_dir2] {
-            if !Path::new(output_dir).is_dir() {
+            if !output_dir.is_dir() {
                 fs::create_dir_all(output_dir)?;
             }
         }
@@ -66,14 +66,22 @@ where
             ),
         );
         log::debug!("Spawning {} self-play workers", self.thread_num);
-        for i in 0..self.thread_num.max(1) {
-            let [player1_params, player2_params] =
-                [self.player1_params.clone(), self.player2_params.clone()].map(|params| MctsParams {
-                    seed: params.seed.map(|s| s ^ (i as u64) ^ 0x55d3992e7ee3598d),
+        for thread_idx in 0..self.thread_num.get() {
+            let [player1_params, player2_params] = [self.player1_params.clone(), self.player2_params.clone()]
+                .into_iter()
+                .enumerate()
+                .map(|(player_idx, params)| MctsParams {
+                    seed: params
+                        .seed
+                        .map(|s| s ^ (((thread_idx * 2 + player_idx) as u64).wrapping_mul(0x55d3992e7ee3598d))),
                     ..params
-                });
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .map_err(|_| unreachable!())
+                .unwrap();
             manager.spawn_thread(
-                format!("self_play_worker_{}", i),
+                format!("self_play_worker_{thread_idx}"),
                 Self::self_play_worker_main(
                     player1_params,
                     player2_params,
@@ -126,26 +134,25 @@ where
         data_entry_channel: Sender<(GameColor, DataEntry<Game>)>,
     ) -> impl FnOnce(ThreadControl) + Send + 'static {
         move |control| {
-            control.set_ready();
-
-            let mut player1 = MctsPlayer::new(player1_params.clone());
-            let mut player2 = MctsPlayer::new(player2_params.clone());
+            let mut player1 = MctsPlayer::new(player1_params);
+            let mut player2 = MctsPlayer::new(player2_params);
 
             let mut select = crossbeam::channel::Select::new();
             let task_index = select.recv(&task_channel);
             let termination_index = select.recv(control.termination_receiver());
+            control.set_ready();
             loop {
                 let oper = select.select();
                 let task = match oper.index() {
                     i if i == task_index => {
                         match oper.recv(&task_channel) {
                             Ok(task) => task,
-                            Err(_) => break, // channel closed
+                            Err(_) => return, // channel closed
                         }
                     }
                     i if i == termination_index => {
                         let _ = oper.recv(control.termination_receiver());
-                        break; // got termination signal
+                        return; // got termination signal
                     }
                     _ => unreachable!(),
                 };
@@ -162,11 +169,13 @@ where
                         break winner;
                     }
 
-                    let mut player = game.position().turn();
-                    if players_switch {
-                        player = player.opposite()
-                    }
-                    let player = match player {
+                    let player_idx = game.position().turn();
+                    let player_idx = if players_switch {
+                        player_idx.opposite()
+                    } else {
+                        player_idx
+                    };
+                    let player = match player_idx {
                         GameColor::Player1 => &mut player1,
                         GameColor::Player2 => &mut player2,
                     };
@@ -178,26 +187,20 @@ where
                         .unwrap();
 
                     /* Store probabilities */
-                    pos_probs_pairs.push((game.position().clone(), moves));
+                    pos_probs_pairs.push((player_idx, game.position().clone(), moves));
 
                     /* Advance game position */
                     game.play_single_turn(next_move);
                 };
 
                 /* Save all data entries */
-                for (pos, probs) in pos_probs_pairs.into_iter() {
-                    let player = pos.turn(); // before flipping, which always yields Player1
+                for (player_idx, pos, probs) in pos_probs_pairs.into_iter() {
                     let winner = GameColor::to_signed_one(winner) as f32;
                     let (pos, is_flipped) = net::flip_pos_if_needed(pos);
                     let (probs, winner) = net::flip_score_if_needed((probs, winner), is_flipped);
-                    let winner = match winner as i32 {
-                        1 => Some(GameColor::Player1),
-                        -1 => Some(GameColor::Player2),
-                        0 => None,
-                        _ => unreachable!(),
-                    };
+                    let winner = GameColor::from_signed_one(winner as i32);
                     data_entry_channel
-                        .send((player, DataEntry { pos, probs, winner }))
+                        .send((player_idx, DataEntry { pos, probs, winner }))
                         .unwrap();
                 }
 
@@ -221,24 +224,23 @@ where
             let termination_index = select.recv(control.termination_receiver());
             loop {
                 let oper = select.select();
-                match oper.index() {
-                    i if i == data_entry_index => {
-                        let (player, data_entry) = oper.recv(&data_entry_receiver).unwrap();
-                        let output_dir = match player {
-                            GameColor::Player1 => &output_dir1,
-                            GameColor::Player2 => &output_dir2,
-                        };
-                        let filename = output_dir.join(format!("{}.traindata", rand::random::<u64>()));
-                        std::fs::File::create_new(filename)
-                            .and_then(|mut f| f.write_all(&data_entry.to_bytes()))
-                            .expect("Failed to write data file");
-                    }
+                let (player, data_entry) = match oper.index() {
+                    i if i == data_entry_index => oper.recv(&data_entry_receiver).unwrap(),
                     i if i == termination_index => {
                         let _ = oper.recv(control.termination_receiver());
                         break;
                     }
                     _ => unreachable!(),
-                }
+                };
+
+                let output_dir = match player {
+                    GameColor::Player1 => &output_dir1,
+                    GameColor::Player2 => &output_dir2,
+                };
+                let filename = output_dir.join(format!("{}.traindata", rand::random::<u64>()));
+                std::fs::File::create_new(filename)
+                    .and_then(|mut f| f.write_all(&data_entry.to_bytes()))
+                    .expect("Failed to write data file");
             }
         }
     }
