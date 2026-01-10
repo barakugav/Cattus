@@ -1,5 +1,5 @@
 game: hex5
-iterations: 75
+iterations: 20
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
@@ -13,11 +13,11 @@ model:
 
 engine:
     mcts:
-        sim_num: 1400
+        sim_num: 10
         explore_factor: 1.41421
         temperature_policy:
             - [9999, 0.0]
-        prior_noise_alpha: 0.03
+        prior_noise_alpha: 0.4
         prior_noise_epsilon: 0.25
         cache_size: 1000000
     model:
@@ -32,21 +32,21 @@ self_play:
             temperature_policy:
                 - [10, 1.0]
                 - [9999, 0.0]
-    games_num: 100
+    games_num: 200
 
     model_compare:
-        games_num: 0
+        games_num: 20
         switching_winning_threshold: 0.55
         warning_losing_threshold: 0.55
 
 training:
-    latest_data_entries: 36864
-    epoch_size: 12288
+    latest_data_entries: 24000
+    epoch_size: 10000
     batch_size: 64
     learning_rate:
-        - [25, 0.01]
-        - [50, 0.001]
+        - [5, 0.01]
+        - [10, 0.001]
         - [0.0001]
     # l2reg: 0.0001
-    use_train_data_across_runs: true
+    use_train_data_across_runs: false
     device: null

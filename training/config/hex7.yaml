@@ -18,7 +18,7 @@ engine:
         explore_factor: 1.41421
         temperature_policy:
             - [9999, 0.0]
-        prior_noise_alpha: 0.03
+        prior_noise_alpha: 0.3
         prior_noise_epsilon: 0.25
         cache_size: 1000000
     model:

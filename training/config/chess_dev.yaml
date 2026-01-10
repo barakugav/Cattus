@@ -49,7 +49,7 @@ engine:
     mcts:
         # Number of simulation performed at each search
         # suggested value: 600-1400
-        sim_num: 600
+        sim_num: 100
 
         # Explore vs exploit factor
         # suggested value: sqrt(2)
@@ -60,8 +60,8 @@ engine:
             - [9999, 0.0]
 
         # Dirichlet noise added to root level prior edges scores
-        # suggested value: (0.03, 0.25)
-        prior_noise_alpha: 0.03
+        # suggested value: (0.3, 0.5)
+        prior_noise_alpha: 0.3
         prior_noise_epsilon: 0.25
 
         # Network output cache size
