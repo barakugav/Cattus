@@ -6,7 +6,8 @@ use crate::util::batch::Batcher;
 use crate::util::metric::RunningAverage;
 use itertools::Itertools;
 use model::{InferenceConfig, Model};
-use ndarray::{Array2, Array4};
+use ndarray::{s, Array2, Array4};
+use std::mem::MaybeUninit;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -47,7 +48,6 @@ impl<Game: crate::game::Game> NNetwork<Game> {
         let moves_scores: Array2<f32> = moves_scores.into_dimensionality().unwrap();
         let vals: Array2<f32> = vals.into_dimensionality().unwrap();
 
-        // let batch_size = vals.len();
         let ret = moves_scores
             .rows()
             .into_iter()
@@ -133,25 +133,18 @@ pub fn planes_to_tensor<Game: crate::game::Game>(samples: &[Vec<Game::Bitboard>]
 
     for (b, sample) in samples.iter().enumerate() {
         for (c, plane) in sample.iter().enumerate() {
-            for h in 0..(Game::BOARD_SIZE) {
-                for w in 0..(Game::BOARD_SIZE) {
-                    tensor[(b, c, h, w)].write(match plane.get(h * Game::BOARD_SIZE + w) {
-                        true => 1.0,
-                        false => 0.0,
-                    });
+            for h in 0..Game::BOARD_SIZE {
+                for w in 0..Game::BOARD_SIZE {
+                    tensor[(b, c, h, w)].write(plane.get(h * Game::BOARD_SIZE + w) as i32 as f32);
                 }
             }
         }
     }
-    for i in samples.len()..batch_size {
-        for c in 0..planes_num {
-            for h in 0..(Game::BOARD_SIZE) {
-                for w in 0..(Game::BOARD_SIZE) {
-                    tensor[(i, c, h, w)].write(0.0);
-                }
-            }
-        }
-    }
+
+    // Fill remaining batch elements with zeros
+    tensor
+        .slice_mut(s![samples.len().., .., .., ..])
+        .fill(MaybeUninit::zeroed());
 
     // Safety: we wrote to all elements
     unsafe { tensor.assume_init() }
