@@ -14,11 +14,11 @@ model:
 
 engine:
     mcts:
-        sim_num: 3
+        sim_num: 300
         explore_factor: 1.41421
         temperature_policy:
             - [9999, 0.0]
-        prior_noise_alpha: 0.5
+        prior_noise_alpha: 0.05
         prior_noise_epsilon: 0.25
         cache_size: 1000000
     model:

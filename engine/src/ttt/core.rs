@@ -188,7 +188,7 @@ impl Display for TttPosition {
         for r in 0..TttGame::BOARD_SIZE {
             for c in 0..TttGame::BOARD_SIZE {
                 let ch = match self.get_tile(r, c) {
-                    None => '_',
+                    None => '·',
                     Some(GameColor::Player1) => 'X',
                     Some(GameColor::Player2) => 'O',
                 };
@@ -376,6 +376,7 @@ mod tests {
     }
 
     pub fn ttt_position_from_str(s: &str) -> TttPosition {
+        let s = s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
         assert_eq!(
             s.chars().count(),
             TttGame::BOARD_SIZE * TttGame::BOARD_SIZE + 1,
