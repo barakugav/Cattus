@@ -59,7 +59,7 @@ jobs:
         run: cargo build --all-features
         working-directory: engine
       - name: Rust Clippy linter
-        uses: auguwu/clippy-action@1.4.0
+        uses: auguwu/clippy-action@1.5.0
         with:
           working-directory: engine
           check-args: --all-features
@@ -70,7 +70,7 @@ jobs:
           cargo test --all-features
         working-directory: engine
       - name: Rust Clippy linter for examples
-        uses: auguwu/clippy-action@1.4.0
+        uses: auguwu/clippy-action@1.5.0
         with:
           working-directory: engine
           check-args: --all-features --examples
@@ -81,7 +81,7 @@ jobs:
         run: cargo build --all-features
         working-directory: training/self-play
       - name: Rust Clippy linter
-        uses: auguwu/clippy-action@1.4.0
+        uses: auguwu/clippy-action@1.5.0
         with:
           working-directory: training/self-play
           check-args: --all-features
