@@ -3,7 +3,7 @@ use cattus::game::{Game, GameColor};
 use cattus::hex::uxi::HexPlayerUXI;
 use cattus::hex::{HexGameStandard, HexPosition};
 use clap::Parser;
-use rand::Rng;
+use rand::RngExt;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

@@ -122,11 +122,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         );
         let search_duration_metric = RunningAverage::new(0.99, metrics::gauge!(search_duration_metric_name));
 
-        let rng = if let Some(seed) = params.seed {
-            StdRng::seed_from_u64(seed)
-        } else {
-            StdRng::from_os_rng()
-        };
+        let rng = StdRng::seed_from_u64(params.seed.unwrap_or_else(rand::random));
 
         Self {
             search_tree: DiGraph::new(),

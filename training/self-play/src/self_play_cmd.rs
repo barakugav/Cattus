@@ -79,10 +79,7 @@ where
     let config: Config =
         serde_json::from_reader(std::fs::File::open(&args.config_file)?).expect("failed to read config file");
 
-    let mut rng = match args.seed {
-        Some(seed) => StdRng::seed_from_u64(seed),
-        None => StdRng::from_os_rng(),
-    };
+    let mut rng = StdRng::seed_from_u64(args.seed.unwrap_or_else(rand::random));
 
     assert!(!config.mcts.temperature_policy.is_empty());
     let scheduled_temperatures = &config.mcts.temperature_policy[..config.mcts.temperature_policy.len() - 1];
