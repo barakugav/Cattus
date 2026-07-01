@@ -42,7 +42,7 @@ jobs:
       # Build executorch
       - name: Cache Cpp ExecuTorch compiled libraries
         id: cache-executorch-build
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: engine/third-party/executorch/build/
           key: cache-executorch-build-${{ runner.OS }}-${{ hashFiles('engine/scripts/build_executorch.py') }}
