@@ -3,7 +3,16 @@ import tempfile
 import yaml
 
 from cattus_train.config import Config
-from cattus_train.train_process import TrainProcess
+from cattus_train.train_process import TrainProcess, win_rate
+
+
+def test_win_rate_counts_draws_as_half():
+    # a strictly better challenger (never loses) clears the 0.55 gate despite many draws
+    assert win_rate(4, 16, 20) == 0.6
+    # two equal models that always draw stay at 0.5 and are not promoted
+    assert win_rate(0, 20, 20) == 0.5
+    # the two players' scores sum to 1
+    assert win_rate(3, 5, 12) + win_rate(4, 5, 12) == 1.0
 
 
 def _ttt_config(tmp_dir: str) -> Config:

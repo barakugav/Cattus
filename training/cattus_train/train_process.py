@@ -360,7 +360,7 @@ class TrainProcess:
                 best_wr, trained_wr = self._compare_model_impl(
                     best_model[1], latest_model_path, best_games_dir, trained_games_dir
                 )
-                winning, losing = trained_wr, 1 - best_wr
+                winning, losing = trained_wr, best_wr
                 self._metrics["model_compare_duration"] = time.time() - compare_start_time
                 self._metrics[f"trained_model_win_rate_{model_idx}"] = winning
                 logging.debug(f"Trained model winning rate: {winning}")
@@ -404,7 +404,7 @@ class TrainProcess:
                 res = json.load(res_file)
             w1, w2, d = res["player1_wins"], res["player2_wins"], res["draws"]
             total_games = w1 + w2 + d
-            return w1 / total_games, w2 / total_games
+            return win_rate(w1, d, total_games), win_rate(w2, d, total_games)
 
     def _create_model(self) -> nn.Module:
         return self._game.create_model(self._net_type, self.cfg.model.__dict__.copy())
@@ -510,6 +510,11 @@ class LearningRateScheduler:
             if training_iter < threshold:
                 return lr
         return self.final_lr
+
+
+def win_rate(wins: int, draws: int, total: int) -> float:
+    # draws count as half, matching AlphaZero's promotion score
+    return (wins + 0.5 * draws) / total
 
 
 def dic2str(d, indent=0):
