@@ -125,7 +125,8 @@ class DataSet(Dataset):
             from cattus_train.chess import NN_INDEX_TO_MOVE
 
             assert isinstance(probs, np.ndarray)
-            return list(zip(NN_INDEX_TO_MOVE, probs))
+            # copy moves so the shared NN_INDEX_TO_MOVE objects are never mutated below
+            return [(chess.Move(m.from_square, m.to_square, promotion=m.promotion), p) for m, p in zip(NN_INDEX_TO_MOVE, probs)]
 
         def probs_as_array(probs) -> np.ndarray:
             if isinstance(probs, np.ndarray):
