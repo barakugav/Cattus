@@ -46,11 +46,11 @@ struct MctsEdge<Move> {
 }
 
 impl<Move> MctsEdge<Move> {
-    pub fn new(m: Move, prior: f32, score: f32) -> Self {
+    pub fn new(m: Move, prior: f32, score: f32, simulations_n: u32) -> Self {
         Self {
             m,
             init_score: prior,
-            simulations_n: 0,
+            simulations_n,
             score_w: score,
         }
     }
@@ -267,20 +267,21 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
 
         for (m, prior) in per_move_init_score {
             let leaf_pos = parent_pos.moved_position(m.clone());
-            let (score, prior) = match leaf_pos.status() {
-                GameStatus::Ongoing => (0.0, prior),
+            let (score, prior, simulations_n) = match leaf_pos.status() {
+                GameStatus::Ongoing => (0.0, prior, 0),
                 GameStatus::Finished(game_color) => {
                     let score = GameColor::to_signed_one(game_color) as f32;
                     let score = match parent_pos.turn() {
                         GameColor::Player1 => score,
                         GameColor::Player2 => -score,
                     };
-                    (score, 0.0)
+                    // seed one visit so exploit stays == score instead of doubling on first backprop
+                    (score, 0.0, 1)
                 }
             };
             let leaf_id = self.search_tree.add_node(MctsNode::from_position(leaf_pos));
             self.search_tree
-                .add_edge(parent_id, leaf_id, MctsEdge::new(m, prior, score));
+                .add_edge(parent_id, leaf_id, MctsEdge::new(m, prior, score, simulations_n));
         }
     }
 
@@ -509,5 +510,26 @@ impl TemperaturePolicy {
             .find(|(threshold, _t)| move_num < *threshold)
             .map(|(_n, t)| *t)
             .unwrap_or(self.last_temperature)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terminal_edge_exploit_stays_in_range() {
+        for value in [1.0f32, 0.0, -1.0] {
+            // seeded as create_children does for a terminal child
+            let mut edge = MctsEdge::new((), 0.0, value, 1);
+            for _ in 0..8 {
+                let exploit = edge.score_w / edge.simulations_n.max(1) as f32;
+                assert_eq!(exploit, value); // stays == value (was 2*value with a 0-visit seed)
+                assert!((-1.0..=1.0).contains(&exploit));
+                // one backprop of the terminal value
+                edge.score_w += value;
+                edge.simulations_n += 1;
+            }
+        }
     }
 }
