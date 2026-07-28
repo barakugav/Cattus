@@ -242,6 +242,7 @@ class TrainProcess:
                 data_set,
                 batch_size=self.cfg.training.batch_size,
                 sampler=sampler,
+                drop_last=True,  # avoid a size-1 final batch crashing BatchNorm
             )
 
             for m_idx, model in model_list:
