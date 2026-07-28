@@ -290,10 +290,6 @@ class TrainProcess:
                     target = torch.argmax(target, dim=1)
                     return (predicted == target).float().mean()
 
-                def value_head_accuracy(output, target):
-                    # Both the target and output should be in range [-1,1]
-                    return 1 - torch.abs(target - output).mean() / 2
-
                 with torch.no_grad():
                     model.eval()
                     # TODO: compute metrics on more than the last batch
@@ -510,6 +506,11 @@ class LearningRateScheduler:
             if training_iter < threshold:
                 return lr
         return self.final_lr
+
+
+def value_head_accuracy(output, target):
+    output = output.squeeze()  # (B, 1) -> (B,) to match target
+    return 1 - torch.abs(target - output).mean() / 2
 
 
 def win_rate(wins: int, draws: int, total: int) -> float:

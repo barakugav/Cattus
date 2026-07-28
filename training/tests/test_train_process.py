@@ -1,9 +1,18 @@
 import tempfile
 
+import torch
 import yaml
 
 from cattus_train.config import Config
-from cattus_train.train_process import TrainProcess, win_rate
+from cattus_train.train_process import TrainProcess, value_head_accuracy, win_rate
+
+
+def test_value_head_accuracy_matches_shapes():
+    output = torch.tensor([[0.9], [-0.9], [0.5]])  # (B, 1) like the model head
+    target = torch.tensor([1.0, -1.0, 0.0])  # (B,)
+    # elementwise, not the (B, B) broadcast the bug produced (which gave ~0.54)
+    assert abs(value_head_accuracy(output, target).item() - 0.8833333) < 1e-4
+    assert value_head_accuracy(target.unsqueeze(1), target).item() == 1.0
 
 
 def test_win_rate_counts_draws_as_half():
