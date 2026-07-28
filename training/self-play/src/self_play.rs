@@ -186,6 +186,7 @@ where
 
                 /* Save all data entries */
                 for (pos, probs) in pos_probs_pairs.into_iter() {
+                    let player = pos.turn(); // before flipping, which always yields Player1
                     let winner = GameColor::to_signed_one(winner) as f32;
                     let (pos, is_flipped) = net::flip_pos_if_needed(pos);
                     let (probs, winner) = net::flip_score_if_needed((probs, winner), is_flipped);
@@ -196,7 +197,7 @@ where
                         _ => unreachable!(),
                     };
                     data_entry_channel
-                        .send((pos.turn(), DataEntry { pos, probs, winner }))
+                        .send((player, DataEntry { pos, probs, winner }))
                         .unwrap();
                 }
 
