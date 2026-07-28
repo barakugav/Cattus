@@ -205,6 +205,10 @@ class TrainProcess:
             self.cfg.games_dir if self.cfg.training.use_train_data_across_runs else self.cfg.games_dir / self.run_id
         )
 
+        if len(DataSet(self._game, train_data_dir, self.cfg.training, device=self.cfg.training.device)) == 0:
+            logging.warning("No training data in %s, skipping training", train_data_dir)
+            return models
+
         lr = self._lr_scheduler.get_lr(iter_num)
         logging.debug("Training models with learning rate %f", lr)
 
