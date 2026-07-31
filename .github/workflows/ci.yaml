@@ -89,9 +89,12 @@ jobs:
 
       # Training package
       - name: Python Ruff linter
-        uses: chartboost/ruff-action@v1
+        uses: astral-sh/ruff-action@v3
         with:
-          args: check training
+          src: analysis
+          args: check --config training/ruff.toml training
+          version: 0.16.x
+
       - name: Python tests
         run: pytest -s tests
         working-directory: training
