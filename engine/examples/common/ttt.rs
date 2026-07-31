@@ -1,7 +1,11 @@
-use crate::game::player::GamePlayer;
-use crate::game::{GameColor, Game};
-use crate::ttt::{TttGame, TttMove, TttPosition};
 use std::io;
+
+use cattus::game::player::GamePlayer;
+use cattus::game::{Game, GameColor};
+use cattus::ttt::{TttGame, TttMove, TttPosition};
+use itertools::Itertools;
+
+use super::CliGame;
 
 pub struct TttPlayerCmd;
 impl GamePlayer<TttGame> for TttPlayerCmd {
@@ -18,9 +22,7 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
             }
         };
 
-        println!("Current position:");
         let position = pos_history.last().unwrap();
-        cli_print_ttt_board(position);
 
         loop {
             println!("Waiting for input move...");
@@ -42,15 +44,17 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
     }
 }
 
-pub fn cli_print_ttt_board(pos: &TttPosition) {
-    for r in 0..TttGame::BOARD_SIZE {
-        let row_characters: Vec<String> = (0..TttGame::BOARD_SIZE)
-            .map(|c| match pos.get_tile(r, c) {
-                None => String::from("_"),
-                Some(GameColor::Player1) => String::from("X"),
-                Some(GameColor::Player2) => String::from("O"),
-            })
-            .collect();
-        println!("{}", row_characters.join(" "));
+impl CliGame for TttGame {
+    fn print_board(pos: &TttPosition) {
+        for r in 0..TttGame::BOARD_SIZE {
+            let row_characters = (0..TttGame::BOARD_SIZE)
+                .map(|c| match pos.get_tile(r, c) {
+                    None => "_",
+                    Some(GameColor::Player1) => "X",
+                    Some(GameColor::Player2) => "O",
+                })
+                .join(" ");
+            println!("{}", row_characters);
+        }
     }
 }

@@ -107,7 +107,7 @@ impl HexPlayerUXI {
     pub fn stop(&mut self) {
         if self.process.is_some() {
             /* be nice (for 0.1 sec) */
-            self.send_command(String::from("quit"));
+            self.send_command("quit".to_string());
             thread::sleep(time::Duration::from_millis(100));
 
             let mut kill_needed = false;

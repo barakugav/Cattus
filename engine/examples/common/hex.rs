@@ -1,8 +1,10 @@
 use std::io;
 
-use crate::game::player::GamePlayer;
-use crate::game::{Game, GameColor};
-use crate::hex::{HexGame, HexMove, HexPosition};
+use cattus::game::player::GamePlayer;
+use cattus::game::{Game, GameColor};
+use cattus::hex::{HexGame, HexMove, HexPosition};
+
+use super::CliGame;
 
 pub struct HexPlayerCmd;
 impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
@@ -22,9 +24,7 @@ impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
             }
         };
 
-        println!("Current position:");
         let position = pos_history.last().unwrap();
-        cli_print_hex_board(position);
 
         loop {
             println!("Waiting for input move...");
@@ -46,18 +46,20 @@ impl<const BOARD_SIZE: usize> GamePlayer<HexGame<BOARD_SIZE>> for HexPlayerCmd {
     }
 }
 
-pub fn cli_print_hex_board<const BOARD_SIZE: usize>(pos: &HexPosition<BOARD_SIZE>) {
-    for r in 0..BOARD_SIZE {
-        let row_characters: Vec<String> = (0..BOARD_SIZE)
-            .map(|c| {
-                String::from(match pos.get_tile(r, c) {
-                    None => '·',
-                    Some(GameColor::Player1) => 'R',
-                    Some(GameColor::Player2) => 'B',
+impl<const BOARD_SIZE: usize> CliGame for HexGame<BOARD_SIZE> {
+    fn print_board(pos: &HexPosition<BOARD_SIZE>) {
+        for r in 0..BOARD_SIZE {
+            let row_characters: Vec<String> = (0..BOARD_SIZE)
+                .map(|c| {
+                    String::from(match pos.get_tile(r, c) {
+                        None => '·',
+                        Some(GameColor::Player1) => 'R',
+                        Some(GameColor::Player2) => 'B',
+                    })
                 })
-            })
-            .collect();
-        let spaces = " ".repeat(r);
-        println!("{}{}", spaces, row_characters.join(" "));
+                .collect();
+            let spaces = " ".repeat(r);
+            println!("{}{}", spaces, row_characters.join(" "));
+        }
     }
 }

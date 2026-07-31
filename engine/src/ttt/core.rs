@@ -2,11 +2,11 @@ use std::fmt::{self, Display};
 
 use crate::game::{Bitboard, Game, GameColor, GameStatus, Move, Position};
 
-pub fn color_to_str(c: Option<GameColor>) -> String {
+pub fn color_to_str(c: Option<GameColor>) -> &'static str {
     match c {
-        None => String::from("None"),
-        Some(GameColor::Player1) => String::from("X"),
-        Some(GameColor::Player2) => String::from("O"),
+        None => "None",
+        Some(GameColor::Player1) => "X",
+        Some(GameColor::Player2) => "O",
     }
 }
 
