@@ -2,7 +2,7 @@ import argparse
 import platform
 import shutil
 import tempfile
-import urllib
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -54,7 +54,11 @@ def download_and_extract_zip(url: str, extract_to: Path):
     with tempfile.TemporaryDirectory() as tmpdirname:
         zip_path = Path(tmpdirname) / "temp.zip"
         print(f"Downloading from {url}...")
-        with urllib.request.urlopen(url) as response, open(zip_path, "wb") as f:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with (
+            urllib.request.urlopen(req, timeout=30) as response,
+            open(zip_path, "wb") as f,
+        ):
             shutil.copyfileobj(response, f)
 
         print(f"Extracting to {extract_to}...")

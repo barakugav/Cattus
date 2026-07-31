@@ -91,7 +91,6 @@ jobs:
       - name: Python Ruff linter
         uses: astral-sh/ruff-action@v3
         with:
-          src: analysis
           args: check --config training/ruff.toml training
           version: 0.16.x
 
