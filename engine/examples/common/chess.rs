@@ -16,7 +16,7 @@ impl GamePlayer<ChessGame> for ChessPlayerCmd {
 
             match ChessMove::from_san(position, line.trim()) {
                 Err(e) => {
-                    println!("invalid number: {}", e);
+                    println!("invalid number: {e}");
                     None
                 }
                 Ok(x) => Some(x),
@@ -25,16 +25,12 @@ impl GamePlayer<ChessGame> for ChessPlayerCmd {
 
         loop {
             println!("Waiting for input move...");
-            let m = match read_cli_move() {
-                None => continue,
-                Some(m) => m,
-            };
+            let Some(m) = read_cli_move() else { continue };
 
             if position.is_valid_move(m) {
                 return Some(m);
-            } else {
-                println!("invalid move");
             }
+            println!("invalid move");
         }
     }
 }

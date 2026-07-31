@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use crate::serialize::{generic_entry_to_bytes, DataEntry, ToBytes};
 use cattus::game::{GameColor, Position};
 use cattus::ttt::TttGame;
@@ -13,7 +11,7 @@ impl ToBytes for DataEntry<TttGame> {
         let planes = cattus::ttt::net::position_to_planes(&self.pos)
             .iter()
             .map(|p| p.get_raw() as u64)
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         generic_entry_to_bytes::<TttGame>(&planes, &self.probs, winner)
     }

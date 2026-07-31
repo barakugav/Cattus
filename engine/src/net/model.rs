@@ -163,10 +163,7 @@ class Model:
             )))]
             unsupported_type => {
                 let _ = path;
-                panic!(
-                    "The requested model implementation is not supported in this build: {:?}",
-                    unsupported_type
-                );
+                panic!("The requested model implementation is not supported in this build: {unsupported_type:?}");
             }
         };
         #[allow(unreachable_code)]
@@ -177,7 +174,6 @@ class Model:
         match &mut self.model {
             #[cfg(feature = "torch-python")]
             ModelImpl::TorchPy(model) => Python::attach(|py| {
-                use itertools::Itertools;
                 use numpy::{IntoPyArray, PyArrayMethods};
 
                 let inputs = inputs
@@ -190,7 +186,7 @@ class Model:
                     .unwrap()
                     .into_iter()
                     .map(|o| o.into_bound(py).to_owned_array())
-                    .collect_vec()
+                    .collect::<Vec<_>>()
             }),
             #[cfg(feature = "torch-tch-rs")]
             ModelImpl::TorchRs { model, device } => {

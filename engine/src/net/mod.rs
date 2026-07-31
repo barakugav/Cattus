@@ -54,14 +54,14 @@ impl<Game: crate::game::Game> NNetwork<Game> {
             .zip(vals)
             .map(|(sample_scores, val)| {
                 let mut sample_scores = sample_scores.to_vec();
-                for s in sample_scores.iter_mut() {
+                for s in &mut sample_scores {
                     if !s.is_finite() {
                         *s = f32::MIN;
                     }
                 }
                 (sample_scores, val)
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         // update metrics
         let mut metrics = self.metrics.lock().unwrap();
@@ -99,7 +99,7 @@ impl<Game: crate::game::Game> NNetwork<Game> {
             self.run_net(planes_to_tensor::<Game>(&inputs, self.batcher.batch_size()))
         });
 
-        let moves = pos.legal_moves().collect_vec();
+        let moves = pos.legal_moves().collect::<Vec<_>>();
         let moves_probs = calc_moves_probs::<Game>(moves, &move_scores);
         (moves_probs, val)
     }
@@ -109,15 +109,15 @@ pub fn calc_moves_probs<Game: crate::game::Game>(
     moves: Vec<Game::Move>,
     move_scores: &[f32],
 ) -> Vec<(Game::Move, f32)> {
-    let moves_scores = moves.iter().map(|m| move_scores[m.to_nn_idx()]).collect_vec();
+    let moves_scores = moves.iter().map(|m| move_scores[m.to_nn_idx()]).collect::<Vec<_>>();
 
     // Softmax normalization
-    let max_p = moves_scores.iter().cloned().fold(f32::MIN, f32::max);
-    let scores = moves_scores.into_iter().map(|p| (p - max_p).exp()).collect_vec();
+    let max_p = moves_scores.iter().copied().fold(f32::MIN, f32::max);
+    let scores = moves_scores.into_iter().map(|p| (p - max_p).exp()).collect::<Vec<_>>();
     let p_sum: f32 = scores.iter().sum();
-    let probs = scores.into_iter().map(|p| p / p_sum).collect_vec();
+    let probs = scores.into_iter().map(|p| p / p_sum).collect::<Vec<_>>();
 
-    moves.into_iter().zip(probs).collect_vec()
+    moves.into_iter().zip(probs).collect::<Vec<_>>()
 }
 
 pub fn planes_to_tensor<Game: crate::game::Game>(samples: &[Vec<Game::Bitboard>], batch_size: usize) -> Array4<f32> {
@@ -171,7 +171,10 @@ pub fn flip_score_if_needed<Move: crate::game::Move>(
     let val = -val;
 
     /* Flip moves */
-    let moves_probs = moves_probs.into_iter().map(|(m, p)| (m.flipped(), p)).collect_vec();
+    let moves_probs = moves_probs
+        .into_iter()
+        .map(|(m, p)| (m.flipped(), p))
+        .collect::<Vec<_>>();
 
     (moves_probs, val)
 }

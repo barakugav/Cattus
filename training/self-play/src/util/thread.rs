@@ -43,7 +43,7 @@ impl ThreadManager {
 
                     let send_err = join_sender.try_send(());
                     if let Err(e) = send_err {
-                        log::warn!("Failed to send join signal from thread '{}': {}", name, e);
+                        log::warn!("Failed to send join signal from thread '{name}': {e}");
                     }
                 }
             })
@@ -60,7 +60,7 @@ impl ThreadManager {
     }
 
     pub(crate) fn wait_ready(&self, deadline: Instant) {
-        for thread in self.threads.iter() {
+        for thread in &self.threads {
             thread
                 .ready_flag
                 .wait_ready(deadline)
@@ -75,7 +75,7 @@ impl ThreadManager {
             let senders = &mut self.inner.lock().unwrap();
             for sender in senders.termination_senders.values_mut() {
                 if let Err(e) = sender.try_send(()) {
-                    log::warn!("Failed to send stop signal to thread: {}", e);
+                    log::warn!("Failed to send stop signal to thread: {e}");
                 }
             }
 

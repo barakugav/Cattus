@@ -151,9 +151,7 @@ impl<const BOARD_SIZE: usize> HexPosition<BOARD_SIZE> {
                 let idx = r * BOARD_SIZE + c;
                 assert!(
                     !(board_red.get(idx) && board_blue.get(idx)),
-                    "invalid board: both players have piece at ({}, {})",
-                    r,
-                    c
+                    "invalid board: both players have piece at ({r}, {c})"
                 );
             }
         }
@@ -298,7 +296,7 @@ impl<const BOARD_SIZE: usize> Display for HexPosition<BOARD_SIZE> {
                     Some(GameColor::Player2) => 'B',
                     None => '.',
                 };
-                write!(f, "{} ", ch)?;
+                write!(f, "{ch} ")?;
             }
             writeln!(f)?;
         }
@@ -530,7 +528,7 @@ mod tests {
                 r . . .",
         ];
         for board_str in red_wins {
-            let pos = hex_position_from_str::<4>(&format!("{}b", board_str));
+            let pos = hex_position_from_str::<4>(&format!("{board_str}b"));
             assert_eq!(
                 pos.status(),
                 GameStatus::Finished(Some(GameColor::Player1)),
@@ -552,7 +550,7 @@ mod tests {
                     "board:\n{pos}"
                 );
 
-                let mut red_indices = pos.pieces_red().clone();
+                let mut red_indices = pos.pieces_red();
                 while !red_indices.is_empty() {
                     let idx = red_indices.get_raw().trailing_zeros() as usize;
                     red_indices.set(idx, false);
@@ -596,7 +594,7 @@ mod tests {
                 b b . .",
         ];
         for board_str in blue_wins {
-            let pos = hex_position_from_str::<4>(&format!("{}r", board_str));
+            let pos = hex_position_from_str::<4>(&format!("{board_str}r"));
             assert_eq!(
                 pos.status(),
                 GameStatus::Finished(Some(GameColor::Player2)),
@@ -618,7 +616,7 @@ mod tests {
                     "board:\n{pos}"
                 );
 
-                let mut blue_indices = pos.pieces_blue().clone();
+                let mut blue_indices = pos.pieces_blue();
                 while !blue_indices.is_empty() {
                     let idx = blue_indices.get_raw().trailing_zeros() as usize;
                     blue_indices.set(idx, false);
@@ -658,7 +656,7 @@ mod tests {
 
         assert_eq!(pos.flipped().flipped(), pos);
 
-        let mut red_indices = pos.pieces_red().clone();
+        let mut red_indices = pos.pieces_red();
         while !red_indices.is_empty() {
             let idx = red_indices.get_raw().trailing_zeros() as usize;
             red_indices.set(idx, false);
@@ -697,9 +695,8 @@ mod tests {
                 assert_eq!(pos, pos_t.flipped());
 
                 /* Assert flip of moves of flip are original moves */
-                type Move = <HexGameStandard as Game>::Move;
-                let moves: HashSet<Move> = HashSet::from_iter(pos.legal_moves());
-                let moves_tt: HashSet<Move> = HashSet::from_iter(pos_t.legal_moves().into_iter().map(|m| m.flipped()));
+                let moves = pos.legal_moves().collect::<HashSet<_>>();
+                let moves_tt = pos_t.legal_moves().map(|m| m.flipped()).collect::<HashSet<_>>();
                 assert_eq!(moves, moves_tt);
 
                 /* Assert game result is the same */
@@ -722,8 +719,8 @@ mod tests {
             .chars()
             .chunks(BOARD_SIZE)
             .into_iter()
-            .map(|chunk| chunk.into_iter().collect_vec())
-            .collect_vec();
+            .map(|chunk| chunk.into_iter().collect::<Vec<_>>())
+            .collect::<Vec<_>>();
         let board_lines = &lines[..BOARD_SIZE];
         let last_line = &lines[BOARD_SIZE];
 
@@ -735,7 +732,7 @@ mod tests {
                     'e' | '.' => {}
                     'r' => board_red.set(row * BOARD_SIZE + col, true),
                     'b' => board_blue.set(row * BOARD_SIZE + col, true),
-                    _ => panic!("unknown board char: {:?}", c),
+                    _ => panic!("unknown board char: {c:?}"),
                 }
             }
         }
@@ -743,7 +740,7 @@ mod tests {
         let turn = match last_line[0] {
             'r' => GameColor::Player1,
             'b' => GameColor::Player2,
-            unknown_turn_char => panic!("unknown turn char: {:?}", unknown_turn_char),
+            unknown_turn_char => panic!("unknown turn char: {unknown_turn_char:?}"),
         };
 
         HexPosition::new_from_board(board_red, board_blue, turn)

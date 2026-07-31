@@ -1,7 +1,6 @@
 mod util;
 use util::*;
 
-use itertools::Itertools;
 use pleco::core::masks::*;
 use pleco::core::mono_traits::*;
 use pleco::core::score::*;
@@ -23,9 +22,9 @@ impl ValueFunction<ChessGame> for StockfishNet {
 
         let val = Evaluation::evaluate(&board) as f32 / 1000.0;
 
-        let moves = position.legal_moves().collect_vec();
+        let moves = position.legal_moves().collect::<Vec<_>>();
         let move_count = moves.len() as f32;
-        let moves_probs = moves.into_iter().map(|m| (m, 1.0 / move_count)).collect_vec();
+        let moves_probs = moves.into_iter().map(|m| (m, 1.0 / move_count)).collect::<Vec<_>>();
 
         net::flip_score_if_needed((moves_probs, val), is_flipped)
     }
@@ -386,11 +385,7 @@ impl<'a, 'b> EvaluationInner<'a> {
 
         let mut v: i32 = (score.0 + score.1) / 2;
         if v.abs() > LAZY_THRESHOLD {
-            if self.board.turn() == Player::White {
-                return v;
-            } else {
-                return -v;
-            }
+            return if self.board.turn() == Player::White { v } else { -v };
         }
 
         self.initialize::<WhiteType>();

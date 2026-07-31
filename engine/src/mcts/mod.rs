@@ -1,14 +1,12 @@
 pub mod cache;
 pub mod value_func;
 
-use itertools::Itertools;
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;
 use rand_distr::multi::{Dirichlet, MultiDistribution};
 use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -254,15 +252,11 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         debug_assert!(parent_pos.status().is_ongoing());
 
         debug_assert_eq!(
-            {
-                let moves_expected: HashSet<Game::Move> = HashSet::from_iter(parent_pos.legal_moves());
-                moves_expected
-            },
-            {
-                let moves_actual: HashSet<Game::Move> =
-                    HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| m.clone()));
-                moves_actual
-            }
+            parent_pos.legal_moves().collect::<HashSet<_>>(),
+            per_move_init_score
+                .iter()
+                .map(|(m, _p)| m.clone())
+                .collect::<HashSet<_>>()
         );
 
         for (m, prior) in per_move_init_score {
@@ -364,14 +358,11 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             // Tree was saved from the last search
             // Look for the position in the first three layers of the tree
             // TODO consider increasing depth limit
-            match self.find_node_with_position(position, 3) {
-                Some(node) => {
-                    self.remove_all_but_subtree(node);
-                }
-                None => {
-                    self.search_tree.clear();
-                    self.root = None;
-                }
+            if let Some(node) = self.find_node_with_position(position, 3) {
+                self.remove_all_but_subtree(node);
+            } else {
+                self.search_tree.clear();
+                self.root = None;
             }
         }
 
@@ -393,14 +384,14 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
                 let e = edge.weight();
                 (e.m.clone(), e.simulations_n)
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         // normalize sim counts to create a valid distribution -> (move, simcount / simcount_total)
         let simcount_total: u32 = moves_and_simcounts.iter().map(|&(_, simcount)| simcount).sum();
         let res = moves_and_simcounts
             .into_iter()
             .map(|(m, simcount)| (m, simcount as f32 / simcount_total as f32))
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         self.search_duration_metric
             .set(search_start_time.elapsed().as_secs_f64());
@@ -430,11 +421,11 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             let probabilities = moves_probs
                 .iter()
                 .map(|(_m, p)| p.powf(1.0 / temperature))
-                .collect_vec();
+                .collect::<Vec<_>>();
 
             /* normalize, prob -> prob / (probs sum) */
             let probs_sum: f32 = probabilities.iter().sum();
-            let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
+            let probabilities = probabilities.iter().map(|p| p / probs_sum).collect::<Vec<_>>();
             let distribution = WeightedIndex::new(probabilities).unwrap();
             Some(moves_probs[distribution.sample(&mut self.rng)].0.clone())
         }
@@ -447,7 +438,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
 
         assert!((0.0..=1.0).contains(&self.prior_noise_epsilon));
 
-        let moves = self.search_tree.edges(node_id).map(|e| e.id()).collect_vec();
+        let moves = self.search_tree.edges(node_id).map(|e| e.id()).collect::<Vec<_>>();
         if moves.len() < 2 {
             return;
         }

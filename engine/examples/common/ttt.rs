@@ -15,7 +15,7 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
             io::stdin().read_line(&mut line).expect("failed to read input");
             match line.trim().parse::<usize>() {
                 Err(e) => {
-                    println!("invalid number: {}", e);
+                    println!("invalid number: {e}");
                     None
                 }
                 Ok(x) => Some(x),
@@ -26,14 +26,8 @@ impl GamePlayer<TttGame> for TttPlayerCmd {
 
         loop {
             println!("Waiting for input move...");
-            let r = match read_usize() {
-                None => continue,
-                Some(r) => r,
-            };
-            let c = match read_usize() {
-                None => continue,
-                Some(c) => c,
-            };
+            let Some(r) = read_usize() else { continue };
+            let Some(c) = read_usize() else { continue };
 
             let move_ = TttMove::new(r, c);
             if position.is_valid_move(move_) {
@@ -54,7 +48,7 @@ impl CliGame for TttGame {
                     Some(GameColor::Player2) => "O",
                 })
                 .join(" ");
-            println!("{}", row_characters);
+            println!("{row_characters}");
         }
     }
 }

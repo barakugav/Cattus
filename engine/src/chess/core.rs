@@ -1,5 +1,3 @@
-use chess;
-use itertools::Itertools;
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
@@ -23,7 +21,7 @@ impl ChessMove {
 
     pub fn from_lan(move_str: &str) -> Result<Self, String> {
         if !(move_str.len() == 4 || move_str.len() == 5) {
-            return Err(format!("Invalid LAN length: '{}'", move_str));
+            return Err(format!("Invalid LAN length: '{move_str}'"));
         }
         #[allow(clippy::iter_nth_zero)]
         let sf = chess::File::from_index(move_str.chars().nth(0).unwrap() as usize - 'a' as usize);
@@ -39,7 +37,7 @@ impl ChessMove {
                 'r' => chess::Piece::Rook,
                 'b' => chess::Piece::Bishop,
                 c => {
-                    return Err(format!("Unknown promotion char: '{}' in lan str '{}'", c, move_str));
+                    return Err(format!("Unknown promotion char: '{c}' in lan str '{move_str}'"));
                 }
             })
         } else {
@@ -63,7 +61,7 @@ impl ChessMove {
                 chess::Piece::Rook => 1,
                 chess::Piece::Bishop => 2,
                 chess::Piece::Knight => 3,
-                other => panic!("unexpected promotion piece: {:?}", other),
+                other => panic!("unexpected promotion piece: {other:?}"),
             };
             promotions_base + move_chunk + piece_offset
         } else {
@@ -180,7 +178,7 @@ impl ChessPosition {
 
     pub fn fen(&self) -> String {
         let b = &self.board;
-        let mut s = String::default();
+        let mut s = String::new();
 
         for reverse_rnk in 0..ChessGame::BOARD_SIZE {
             let mut blanks = 0;
@@ -233,7 +231,7 @@ impl ChessPosition {
         let cr_str = if cr_w == chess::CastleRights::NoRights && cr_b == chess::CastleRights::NoRights {
             "-".to_string()
         } else {
-            let mut s = String::default();
+            let mut s = String::new();
             if cr_w.has_kingside() {
                 s.push('K');
             }
@@ -328,7 +326,7 @@ impl Display for ChessPosition {
                         if self.board.color_on(sq).unwrap() == chess::Color::Black {
                             c = c.to_lowercase().next().unwrap();
                         }
-                        write!(f, "{} ", c)?;
+                        write!(f, "{c} ")?;
                     }
                     None => {
                         write!(f, ". ")?;
@@ -361,7 +359,7 @@ impl Position for ChessPosition {
         let mut next_board = ChessPosition::new_from_board(self.board.make_move_new(m.m));
 
         let piece = self.board.piece_on(m.m.get_source());
-        let is_pawn = piece.is_some() && piece.unwrap() == chess::Piece::Pawn;
+        let is_pawn = piece == Some(chess::Piece::Pawn);
         let is_atk = self.board.piece_on(m.m.get_dest()).is_some();
 
         next_board.fifty_rule_count = if is_pawn || is_atk {
@@ -377,7 +375,7 @@ impl Position for ChessPosition {
     }
 
     fn status(&self) -> GameStatus {
-        if !(self.board.status() != chess::BoardStatus::Ongoing || self.fifty_rule_count >= 50) {
+        if self.board.status() == chess::BoardStatus::Ongoing && self.fifty_rule_count < 50 {
             return GameStatus::Ongoing;
         }
         GameStatus::Finished(match self.board.status() {
@@ -412,7 +410,7 @@ impl Position for ChessPosition {
                     !b.color_on(square).unwrap(),
                 )
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         let board = chess::Board::try_from(chess::BoardBuilder::setup(
             pieces.iter(),
@@ -622,7 +620,7 @@ static NN_INDEX_TO_MOVE: std::sync::LazyLock<Vec<ChessMove>> = std::sync::LazyLo
     ]
     .into_iter()
     .map(|s| ChessMove::from_lan(s).unwrap())
-    .collect_vec()
+    .collect::<Vec<_>>()
 });
 
 static MOVE_TO_NN_INDEX: std::sync::LazyLock<Vec<u16>> = std::sync::LazyLock::new(|| {
@@ -704,7 +702,7 @@ mod tests {
     fn flip() {
         /* random FEN: */
         /* http://bernd.bplaced.net/fengenerator/fengenerator.html */
-        for pos in vec![
+        for pos in [
             "7r/2B3n1/K5R1/3nPP2/P1k2Pp1/4p1p1/2p4P/8 w - - 0 1",
             "8/5pB1/1P4P1/1p3q2/BK1pP2P/pQ1pP3/7k/8 w - - 0 1",
             "2k5/2b1p1P1/1p5P/P1pnp3/QPK1b2p/8/5r2/8 b - - 0 1",
@@ -739,8 +737,8 @@ mod tests {
                 assert_eq!(pos, pos_t.flipped());
 
                 /* Assert flip of moves of flip are original moves */
-                let moves = HashSet::<ChessMove>::from_iter(pos.legal_moves());
-                let moves_tt = HashSet::from_iter(pos_t.legal_moves().map(|m| m.flipped()));
+                let moves = pos.legal_moves().collect::<HashSet<_>>();
+                let moves_tt = pos_t.legal_moves().map(|m| m.flipped()).collect::<HashSet<_>>();
                 assert_eq!(moves, moves_tt);
 
                 /* Assert game result is the same */

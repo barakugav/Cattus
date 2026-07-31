@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use crate::chess::{ChessGame, ChessPosition};
 use crate::game::{Game, Position};
 use crate::mcts::value_func::ValueFunction;
@@ -55,7 +53,7 @@ impl ValueFunction<ChessGame> for TrivialNet {
         }
         val = 2.0 / (1.0 + (val * -10.0).exp()) - 1.0;
 
-        let moves = position.legal_moves().collect_vec();
+        let moves = position.legal_moves().collect::<Vec<_>>();
         let moves_probs = net::calc_moves_probs::<ChessGame>(moves, &POLICY);
 
         net::flip_score_if_needed((moves_probs, val), is_flipped)

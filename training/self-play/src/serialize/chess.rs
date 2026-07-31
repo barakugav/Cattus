@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use crate::serialize::{DataEntry, ToBytes};
 use cattus::chess::ChessGame;
 use cattus::game::Move;
@@ -14,7 +12,7 @@ impl ToBytes for DataEntry<ChessGame> {
         let planes = cattus::chess::net::position_to_planes(&self.pos)
             .iter()
             .map(|p| p.get_raw())
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         /* Sort moves by their indices. Important as the deserializer expect the bitmap and probs order to match */
         let mut probs = self.probs.clone();

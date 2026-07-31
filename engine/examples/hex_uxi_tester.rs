@@ -10,8 +10,8 @@ use std::time::Instant;
 fn comapre_engines(
     engine1_filename: &Path,
     engine2_filename: &Path,
-    engine1_params: &Vec<String>,
-    engine2_params: &Vec<String>,
+    engine1_params: &[String],
+    engine2_params: &[String],
     number_of_games: usize,
     _working_dir: &Path,
 ) {
@@ -57,9 +57,9 @@ fn compare_players(
     let mut rng = rand::rng();
 
     log::info!("Comparing between two players:");
-    log::info!("\tplayer1: {}", player1_display_name);
-    log::info!("\tplayer2: {}", player2_display_name);
-    log::info!("\tnumber of games: {}", number_of_games);
+    log::info!("\tplayer1: {player1_display_name}");
+    log::info!("\tplayer2: {player2_display_name}");
+    log::info!("\tnumber of games: {number_of_games}");
 
     let run_time = Instant::now();
     let mut player1_wins = 0;
@@ -79,8 +79,8 @@ fn compare_players(
         };
     }
     log::info!("Comparison results:");
-    log::info!("\t{}/{} : {}", player1_wins, number_of_games, player1_display_name);
-    log::info!("\t{}/{} : {}", player2_wins, number_of_games, player2_display_name);
+    log::info!("\t{player1_wins}/{number_of_games} : {player1_display_name}");
+    log::info!("\t{player2_wins}/{number_of_games} : {player2_display_name}");
     log::info!("\tRunning time: {}s", run_time.elapsed().as_secs());
 }
 
@@ -117,22 +117,21 @@ fn main() {
     cattus::util::init_globals(Default::default());
 
     let args = Args::parse();
-    let parse_engine_args = |engine_args_str0: String| -> Option<Vec<String>> {
-        let mut engine_args_str = engine_args_str0;
+    let parse_engine_args = |mut engine_args_str: String| -> Option<Vec<String>> {
         if engine_args_str.is_empty() {
             return Some(vec![]);
         }
         if engine_args_str.starts_with('\"') {
-            engine_args_str = engine_args_str[1..engine_args_str.len()].to_string();
+            engine_args_str = engine_args_str[1..].to_string();
         }
         if engine_args_str.ends_with('\"') {
-            engine_args_str = engine_args_str[0..engine_args_str.len() - 1].to_string();
+            engine_args_str = engine_args_str[..engine_args_str.len() - 1].to_string();
         }
         Some(
             engine_args_str
                 .split(' ')
-                .filter(|s| -> bool { !s.is_empty() })
-                .map(|s| -> String { String::from(s) })
+                .filter(|s| !s.is_empty())
+                .map(String::from)
                 .collect(),
         )
     };

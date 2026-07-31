@@ -78,8 +78,7 @@ where
                 })
                 .collect::<Vec<_>>()
                 .try_into()
-                .map_err(|_| unreachable!())
-                .unwrap();
+                .unwrap_or_else(|_| unreachable!());
             manager.spawn_thread(
                 format!("self_play_worker_{thread_idx}"),
                 Self::self_play_worker_main(
@@ -111,7 +110,7 @@ where
         progress_bar.finish_and_clear();
         let join_res = manager.terminate();
         if let Err(e) = join_res {
-            return Err(std::io::Error::other(format!("Thread panicked: {:?}", e)));
+            return Err(std::io::Error::other(format!("Thread panicked: {e:?}")));
         }
         drop(task_sender);
 
@@ -194,7 +193,7 @@ where
                 };
 
                 /* Save all data entries */
-                for (player_idx, pos, probs) in pos_probs_pairs.into_iter() {
+                for (player_idx, pos, probs) in pos_probs_pairs {
                     let winner = GameColor::to_signed_one(winner) as f32;
                     let (pos, is_flipped) = net::flip_pos_if_needed(pos);
                     let (probs, winner) = net::flip_score_if_needed((probs, winner), is_flipped);

@@ -32,7 +32,7 @@ fn main() -> std::io::Result<()> {
         "hex9" => create_tensor_hex::<9>(&args),
         "hex11" => create_tensor_hex::<11>(&args),
         "chess" => create_tensor_chess(&args),
-        unknown_game => panic!("unknown game: {:?}", unknown_game),
+        unknown_game => panic!("unknown game: {unknown_game:?}"),
     };
 
     // Remove the batch axis
@@ -70,7 +70,7 @@ fn tensor_to_json(tensor: Array3<f32>, filename: &Path) -> std::io::Result<()> {
         writer,
         &JsonTensor {
             shape: tensor.shape().to_vec(),
-            data: tensor.iter().cloned().collect(),
+            data: tensor.iter().copied().collect(),
         },
     )?;
     Ok(())

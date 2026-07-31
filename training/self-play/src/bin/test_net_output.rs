@@ -6,7 +6,6 @@ use cattus::ttt::TttGame;
 use cattus::{chess, hex, ttt};
 use cattus_self_play::test_util::{hex_position_from_str, ttt_position_from_str};
 use clap::Parser;
-use itertools::Itertools;
 use ndarray::{Array2, ArrayD, Axis};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -41,7 +40,7 @@ fn main() -> std::io::Result<()> {
         "hex9" => run_net_hex::<9>(&args),
         "hex11" => run_net_hex::<11>(&args),
         "chess" => run_net_chess(&args),
-        unknown_game => panic!("unknown game: {:?}", unknown_game),
+        unknown_game => panic!("unknown game: {unknown_game:?}"),
     };
     outputs_to_json(outputs, &args.outfile)
 }
@@ -55,10 +54,13 @@ fn run_net_tictactoe(args: &Args) -> Vec<ArrayD<f32>> {
             let tensor = planes_to_tensor::<TttGame>(&[samples], args.batch_size);
             model.run(vec![tensor.into_dyn()])
         })
-        .collect_vec();
+        .collect::<Vec<_>>();
     (0..outputs[0].len())
         .map(|output_idx| {
-            let outputs = outputs.iter().map(|outputs| outputs[output_idx].view()).collect_vec();
+            let outputs = outputs
+                .iter()
+                .map(|outputs| outputs[output_idx].view())
+                .collect::<Vec<_>>();
             ndarray::concatenate(Axis(0), &outputs).unwrap()
         })
         .collect()
@@ -73,10 +75,13 @@ fn run_net_hex<const BOARD_SIZE: usize>(args: &Args) -> Vec<ArrayD<f32>> {
             let tensor = planes_to_tensor::<HexGame<BOARD_SIZE>>(&[samples], args.batch_size);
             model.run(vec![tensor.into_dyn()])
         })
-        .collect_vec();
+        .collect::<Vec<_>>();
     (0..outputs[0].len())
         .map(|output_idx| {
-            let outputs = outputs.iter().map(|outputs| outputs[output_idx].view()).collect_vec();
+            let outputs = outputs
+                .iter()
+                .map(|outputs| outputs[output_idx].view())
+                .collect::<Vec<_>>();
             ndarray::concatenate(Axis(0), &outputs).unwrap()
         })
         .collect()
@@ -92,10 +97,13 @@ fn run_net_chess(args: &Args) -> Vec<ArrayD<f32>> {
             let tensor = planes_to_tensor::<ChessGame>(&[samples], args.batch_size);
             model.run(vec![tensor.into_dyn()])
         })
-        .collect_vec();
+        .collect::<Vec<_>>();
     (0..outputs[0].len())
         .map(|output_idx| {
-            let outputs = outputs.iter().map(|outputs| outputs[output_idx].view()).collect_vec();
+            let outputs = outputs
+                .iter()
+                .map(|outputs| outputs[output_idx].view())
+                .collect::<Vec<_>>();
             ndarray::concatenate(Axis(0), &outputs).unwrap()
         })
         .collect()
@@ -105,9 +113,9 @@ fn outputs_to_json(mut outputs: Vec<ArrayD<f32>>, filename: &Path) -> std::io::R
     assert_eq!(outputs.len(), 2);
     let probs: Array2<f32> = outputs.remove(0).into_dimensionality().unwrap();
     let vals: Array2<f32> = outputs.remove(0).into_dimensionality().unwrap();
-    let probs = probs.rows().into_iter().map(|row| row.to_vec()).collect_vec();
+    let probs = probs.rows().into_iter().map(|row| row.to_vec()).collect::<Vec<_>>();
     assert_eq!(vals.shape()[1], 1);
-    let vals = vals.iter().cloned().collect_vec();
+    let vals = vals.iter().copied().collect::<Vec<_>>();
 
     #[derive(serde::Serialize)]
     struct JsonOutputs {

@@ -176,6 +176,6 @@ fn log_level_parser(s: &str) -> Result<log::LevelFilter, String> {
         "Info" => log::LevelFilter::Info,
         "Debug" => log::LevelFilter::Debug,
         "Trace" => log::LevelFilter::Trace,
-        _ => return Err(format!("invalid log level: {}", s)),
+        _ => return Err(format!("invalid log level: {s}")),
     })
 }
