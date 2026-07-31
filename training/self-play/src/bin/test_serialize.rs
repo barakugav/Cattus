@@ -8,7 +8,6 @@ use cattus::ttt::TttGame;
 use cattus_self_play::serialize::{DataEntry, ToBytes};
 use cattus_self_play::test_util::{hex_position_from_str, ttt_position_from_str};
 use clap::Parser;
-use itertools::Itertools;
 
 #[derive(Parser, Debug)]
 #[clap(about, long_about = None)]
@@ -33,7 +32,7 @@ fn main() -> std::io::Result<()> {
         "hex9" => test_hex::<9>(args),
         "hex11" => test_hex::<11>(args),
         "chess" => test_chess(args),
-        unknown_game => panic!("unknown game: {:?}", unknown_game),
+        unknown_game => panic!("unknown game: {unknown_game:?}"),
     }
 }
 
@@ -57,13 +56,13 @@ where
     Game: cattus::game::Game,
     DataEntry<Game>: ToBytes,
 {
-    let moves = pos.legal_moves().collect_vec();
+    let moves = pos.legal_moves().collect::<Vec<_>>();
     let moves_num = moves.len();
     let probs = moves
         .into_iter()
         .enumerate()
         .map(|(idx, m)| (m, idx as f32 / (moves_num * (moves_num - 1)) as f32))
-        .collect_vec();
+        .collect::<Vec<_>>();
     let winner = match moves_num % 3 {
         0 => Some(GameColor::Player1),
         1 => Some(GameColor::Player2),

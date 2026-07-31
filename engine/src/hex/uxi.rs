@@ -1,11 +1,8 @@
-use itertools::Itertools;
-
 use crate::game::player::GamePlayer;
 use crate::game::{Bitboard, Game, GameColor, Position};
 use crate::hex::{HexBitboard, HexGameStandard, HexMove, HexPosition};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
-use std::string::String;
 use std::{io, process, thread, time};
 
 /**
@@ -45,7 +42,7 @@ impl HexPlayerUXI {
         }
     }
 
-    pub fn start(&mut self, engine_params: &Vec<String>) -> bool {
+    pub fn start(&mut self, engine_params: &[String]) -> bool {
         if self.process.is_some() {
             println!("[UXIPlayer] Process is already launched");
             return false;
@@ -77,7 +74,7 @@ impl HexPlayerUXI {
             .spawn()
         {
             Err(error) => {
-                eprintln!("[UXIPlayer] Failed to launch process: {}", error);
+                eprintln!("[UXIPlayer] Failed to launch process: {error}");
                 None
             }
             Ok(process) => Some(process),
@@ -86,19 +83,17 @@ impl HexPlayerUXI {
             return false;
         }
 
-        let r = self.receive_command();
-        if r.is_none() {
+        let Some(resp) = self.receive_command() else {
             return false;
-        }
-        let resp = r.unwrap();
-        let response: Vec<_> = resp.split(' ').collect();
+        };
+        let response = resp.split(' ').collect::<Vec<_>>();
         if response.is_empty() {
             return false;
         }
         match response[0] {
             "ready" => true,
             _ => {
-                eprintln!("[UXIPlayer] Unexpected command: {:?} (expected ready)", response);
+                eprintln!("[UXIPlayer] Unexpected command: {response:?} (expected ready)");
                 false
             }
         }
@@ -107,13 +102,13 @@ impl HexPlayerUXI {
     pub fn stop(&mut self) {
         if self.process.is_some() {
             /* be nice (for 0.1 sec) */
-            self.send_command(String::from("quit"));
+            self.send_command("quit");
             thread::sleep(time::Duration::from_millis(100));
 
             let mut kill_needed = false;
             match self.process.as_mut().unwrap().try_wait() {
                 Err(error) => {
-                    eprintln!("[UXIPlayer] Failed to get engine process status: {}", error);
+                    eprintln!("[UXIPlayer] Failed to get engine process status: {error}");
                     kill_needed = true;
                 }
                 Ok(status) => match status {
@@ -127,22 +122,22 @@ impl HexPlayerUXI {
             if kill_needed {
                 /* don't be nice */
                 if let Err(error) = self.process.as_mut().unwrap().kill() {
-                    eprintln!("[UXIPlayer] Failed to kill process: {}", error);
+                    eprintln!("[UXIPlayer] Failed to kill process: {error}");
                 }
             }
             self.process = None;
         }
     }
 
-    fn send_command(&mut self, cmd: String) {
+    fn send_command(&mut self, cmd: &str) {
         if self.process.is_none() {
             eprintln!("[UXIPlayer] Engine was not started.");
             return;
         }
         let process = self.process.as_mut().unwrap();
         let engine_stdin = process.stdin.as_mut().unwrap();
-        if let Err(error) = engine_stdin.write((String::from(cmd.trim()) + "\n").as_bytes()) {
-            eprintln!("[UXIPlayer] Failed to pass command: {}", error)
+        if let Err(error) = engine_stdin.write(format!("{}\n", cmd.trim()).as_bytes()) {
+            eprintln!("[UXIPlayer] Failed to pass command: {error}")
         }
     }
 
@@ -157,7 +152,7 @@ impl HexPlayerUXI {
 
         match engine_stdout.read_line(&mut output_line) {
             Err(error) => {
-                eprintln!("[UXIPlayer] Failed to read output from engine: {}", error);
+                eprintln!("[UXIPlayer] Failed to read output from engine: {error}");
                 None
             }
             Ok(_) => Some(String::from(output_line.trim())),
@@ -173,33 +168,33 @@ impl GamePlayer<HexGameStandard> for HexPlayerUXI {
         let mut command = String::with_capacity(10 + HexGameStandard::BOARD_SIZE * HexGameStandard::BOARD_SIZE + 3);
         command.push_str("next_move ");
         position_to_uxi(pos_history.last().unwrap(), &mut command);
-        self.send_command(command);
+        self.send_command(&command);
         let resp = self.receive_command()?;
-        let response: Vec<_> = resp.split(' ').collect();
+        let response = resp.split(' ').collect::<Vec<_>>();
         if response.is_empty() {
             return None;
         }
         match response[0] {
             "move" => {
                 if response.len() != 2 {
-                    eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{}\"", resp);
+                    eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{resp}\"");
                     return None;
                 }
-                let m_str = response[1].split(',').collect_vec();
+                let m_str = response[1].split(',').collect::<Vec<_>>();
                 if m_str.len() != 2 {
-                    eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{}\"", resp);
+                    eprintln!("[UXIPlayer] Expected \"move r,c\" format: \"{resp}\"");
                     return None;
                 }
                 let r = match m_str[0].parse::<usize>() {
                     Err(error) => {
-                        eprintln!("[UXIPlayer] Failed to parse row index: {}", error);
+                        eprintln!("[UXIPlayer] Failed to parse row index: {error}");
                         return None;
                     }
                     Ok(row) => row,
                 };
                 let c = match m_str[1].parse::<usize>() {
                     Err(error) => {
-                        eprintln!("[UXIPlayer] Failed to parse column index: {}", error);
+                        eprintln!("[UXIPlayer] Failed to parse column index: {error}");
                         return None;
                     }
                     Ok(column) => column,
@@ -207,7 +202,7 @@ impl GamePlayer<HexGameStandard> for HexPlayerUXI {
                 Some(HexMove::new(r, c))
             }
             unknown_cmd => {
-                eprintln!("[UXIPlayer] Unknown command: {}", unknown_cmd);
+                eprintln!("[UXIPlayer] Unknown command: {unknown_cmd}");
                 None
             }
         }
@@ -230,7 +225,7 @@ impl UxiEngine {
             io::stdin()
                 .read_line(&mut line)
                 .expect("[UxiEngine] failed to read input");
-            let args: Vec<_> = line.split_whitespace().collect();
+            let args = line.split_whitespace().collect::<Vec<_>>();
 
             if args.is_empty() {
                 continue;
@@ -243,24 +238,20 @@ impl UxiEngine {
                     }
                     let pos_str = args[1];
                     let color_str = args[2];
-                    match uxi_to_position(pos_str, color_str) {
-                        None => {
-                            eprintln!("[UxiEngine] Failed to parse position.");
-                            continue;
-                        }
-                        Some(pos) => {
-                            match self.player.next_move(&[pos]) {
-                                None => println!("error"),
-                                Some(m) => println!("move {},{}", m.row(), m.column()),
-                            };
-                        }
-                    }
+                    let Some(pos) = uxi_to_position(pos_str, color_str) else {
+                        eprintln!("[UxiEngine] Failed to parse position.");
+                        continue;
+                    };
+                    match self.player.next_move(&[pos]) {
+                        None => println!("error"),
+                        Some(m) => println!("move {},{}", m.row(), m.column()),
+                    };
                 }
                 "quit" => {
                     break;
                 }
                 unknown_cmd => {
-                    eprintln!("[UxiEngine] Unknown command: {}", unknown_cmd);
+                    eprintln!("[UxiEngine] Unknown command: {unknown_cmd}");
                 }
             }
         }
@@ -298,7 +289,7 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<<HexGameStandard as
             'r' => board_red.set(idx, true),
             'b' => board_blue.set(idx, true),
             unknown_tile => {
-                eprintln!("Unknown tile: {}", unknown_tile);
+                eprintln!("Unknown tile: {unknown_tile}");
                 return None;
             }
         };
@@ -312,7 +303,7 @@ fn uxi_to_position(pos_str: &str, color_str: &str) -> Option<<HexGameStandard as
         "r" => GameColor::Player1,
         "b" => GameColor::Player2,
         unknown_player => {
-            eprintln!("Unknown player: {}", unknown_player);
+            eprintln!("Unknown player: {unknown_player}");
             return None;
         }
     };

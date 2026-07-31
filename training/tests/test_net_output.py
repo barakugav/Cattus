@@ -7,13 +7,12 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn as nn
-from executorch.exir import to_edge_transform_and_lower
-
 from cattus_train.chess import Chess
 from cattus_train.hex import Hex
 from cattus_train.tictactoe import TicTacToe
 from cattus_train.trainable_game import Game
+from executorch.exir import to_edge_transform_and_lower
+from torch import nn
 
 TESTS_DIR = Path(__file__).parent.resolve()
 SELF_PLAY_TOP = TESTS_DIR.parent / "self-play"
@@ -23,6 +22,7 @@ ASSERT_RUST_OUTPUT_EQ_REPEAT = 8
 
 
 logging.basicConfig(level=logging.DEBUG, format="[Net Output Test]: %(message)s")
+logger = logging.getLogger(__name__)
 
 
 def is_outputs_equals(o1, o2):
@@ -151,42 +151,48 @@ def test_hex_net_output():
         "hex11",
         Hex(11),
         [
-            "reeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "r",
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "r",
-            "reeeeeeeeee"
-            "ereeeeeeeee"
-            "eereeeeeeee"
-            "eeereeeeeee"
-            "eeeereeeeee"
-            "eeeeereeeee"
-            "eeeeeereeee"
-            "eeeeeeereee"
-            "eeeeeeeeree"
-            "eeeeeeeeere"
-            "eeeeeeeeeer"
-            "r",
+            (
+                "reeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "r"
+            ),
+            (
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "r"
+            ),
+            (
+                "reeeeeeeeee"
+                "ereeeeeeeee"
+                "eereeeeeeee"
+                "eeereeeeeee"
+                "eeeereeeeee"
+                "eeeeereeeee"
+                "eeeeeereeee"
+                "eeeeeeereee"
+                "eeeeeeeeree"
+                "eeeeeeeeere"
+                "eeeeeeeeeer"
+                "r"
+            ),
         ],
     )
 
@@ -209,4 +215,4 @@ if __name__ == "__main__":
     test_ttt_net_output()
     test_hex_net_output()
     test_chess_net_output()
-    logging.info("test passed")
+    logger.info("test passed")

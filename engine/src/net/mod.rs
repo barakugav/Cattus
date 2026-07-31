@@ -6,7 +6,8 @@ use crate::util::batch::Batcher;
 use crate::util::metric::RunningAverage;
 use itertools::Itertools;
 use model::{InferenceConfig, Model};
-use ndarray::{Array2, Array4};
+use ndarray::{s, Array2, Array4};
+use std::mem::MaybeUninit;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -47,21 +48,20 @@ impl<Game: crate::game::Game> NNetwork<Game> {
         let moves_scores: Array2<f32> = moves_scores.into_dimensionality().unwrap();
         let vals: Array2<f32> = vals.into_dimensionality().unwrap();
 
-        // let batch_size = vals.len();
         let ret = moves_scores
             .rows()
             .into_iter()
             .zip(vals)
             .map(|(sample_scores, val)| {
                 let mut sample_scores = sample_scores.to_vec();
-                for s in sample_scores.iter_mut() {
+                for s in &mut sample_scores {
                     if !s.is_finite() {
                         *s = f32::MIN;
                     }
                 }
                 (sample_scores, val)
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         // update metrics
         let mut metrics = self.metrics.lock().unwrap();
@@ -99,7 +99,7 @@ impl<Game: crate::game::Game> NNetwork<Game> {
             self.run_net(planes_to_tensor::<Game>(&inputs, self.batcher.batch_size()))
         });
 
-        let moves = pos.legal_moves().collect_vec();
+        let moves = pos.legal_moves().collect::<Vec<_>>();
         let moves_probs = calc_moves_probs::<Game>(moves, &move_scores);
         (moves_probs, val)
     }
@@ -109,15 +109,15 @@ pub fn calc_moves_probs<Game: crate::game::Game>(
     moves: Vec<Game::Move>,
     move_scores: &[f32],
 ) -> Vec<(Game::Move, f32)> {
-    let moves_scores = moves.iter().map(|m| move_scores[m.to_nn_idx()]).collect_vec();
+    let moves_scores = moves.iter().map(|m| move_scores[m.to_nn_idx()]).collect::<Vec<_>>();
 
     // Softmax normalization
-    let max_p = moves_scores.iter().cloned().fold(f32::MIN, f32::max);
-    let scores = moves_scores.into_iter().map(|p| (p - max_p).exp()).collect_vec();
+    let max_p = moves_scores.iter().copied().fold(f32::MIN, f32::max);
+    let scores = moves_scores.into_iter().map(|p| (p - max_p).exp()).collect::<Vec<_>>();
     let p_sum: f32 = scores.iter().sum();
-    let probs = scores.into_iter().map(|p| p / p_sum).collect_vec();
+    let probs = scores.into_iter().map(|p| p / p_sum).collect::<Vec<_>>();
 
-    moves.into_iter().zip(probs).collect_vec()
+    moves.into_iter().zip(probs).collect::<Vec<_>>()
 }
 
 pub fn planes_to_tensor<Game: crate::game::Game>(samples: &[Vec<Game::Bitboard>], batch_size: usize) -> Array4<f32> {
@@ -133,25 +133,18 @@ pub fn planes_to_tensor<Game: crate::game::Game>(samples: &[Vec<Game::Bitboard>]
 
     for (b, sample) in samples.iter().enumerate() {
         for (c, plane) in sample.iter().enumerate() {
-            for h in 0..(Game::BOARD_SIZE) {
-                for w in 0..(Game::BOARD_SIZE) {
-                    tensor[(b, c, h, w)].write(match plane.get(h * Game::BOARD_SIZE + w) {
-                        true => 1.0,
-                        false => 0.0,
-                    });
+            for h in 0..Game::BOARD_SIZE {
+                for w in 0..Game::BOARD_SIZE {
+                    tensor[(b, c, h, w)].write(plane.get(h * Game::BOARD_SIZE + w) as i32 as f32);
                 }
             }
         }
     }
-    for i in samples.len()..batch_size {
-        for c in 0..planes_num {
-            for h in 0..(Game::BOARD_SIZE) {
-                for w in 0..(Game::BOARD_SIZE) {
-                    tensor[(i, c, h, w)].write(0.0);
-                }
-            }
-        }
-    }
+
+    // Fill remaining batch elements with zeros
+    tensor
+        .slice_mut(s![samples.len().., .., .., ..])
+        .fill(MaybeUninit::zeroed());
 
     // Safety: we wrote to all elements
     unsafe { tensor.assume_init() }
@@ -178,7 +171,10 @@ pub fn flip_score_if_needed<Move: crate::game::Move>(
     let val = -val;
 
     /* Flip moves */
-    let moves_probs = moves_probs.into_iter().map(|(m, p)| (m.flipped(), p)).collect_vec();
+    let moves_probs = moves_probs
+        .into_iter()
+        .map(|(m, p)| (m.flipped(), p))
+        .collect::<Vec<_>>();
 
     (moves_probs, val)
 }

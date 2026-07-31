@@ -1,14 +1,12 @@
 pub mod cache;
 pub mod value_func;
 
-use itertools::Itertools;
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rand::distr::weighted::WeightedIndex;
 use rand::prelude::*;
 use rand_distr::multi::{Dirichlet, MultiDistribution};
 use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -46,12 +44,12 @@ struct MctsEdge<Move> {
 }
 
 impl<Move> MctsEdge<Move> {
-    pub fn new(m: Move, init_score: f32) -> Self {
+    pub fn new(m: Move, prior: f32, score: f32, simulations_n: u32) -> Self {
         Self {
             m,
-            init_score,
-            simulations_n: 0,
-            score_w: 0.0,
+            init_score: prior,
+            simulations_n,
+            score_w: score,
         }
     }
 }
@@ -170,7 +168,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             let path_to_selection = self.select();
 
             let repetition_reached = self.detect_repetition(pos_history, &path_to_selection);
-            let leaf_id: NodeIndex = if path_to_selection.is_empty() {
+            let leaf_id = if path_to_selection.is_empty() {
                 self.root.unwrap()
             } else {
                 let (_e_source, e_target) = self
@@ -207,7 +205,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
 
     /* Return path to selected leaf node */
     fn select(&self) -> Vec<EdgeIndex> {
-        let mut path: Vec<EdgeIndex> = vec![];
+        let mut path = Vec::<EdgeIndex>::new();
 
         let mut node_id = self.root.unwrap();
         loop {
@@ -241,11 +239,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
     }
 
     fn calc_selection_heuristic(&self, edge: &MctsEdge<Game::Move>, parent_simcount: u32) -> f32 {
-        let exploit = if edge.simulations_n == 0 {
-            0.0
-        } else {
-            edge.score_w / edge.simulations_n as f32
-        };
+        let exploit = edge.score_w / edge.simulations_n.max(1) as f32;
 
         let explore =
             self.explore_factor * edge.init_score * ((parent_simcount as f32).sqrt() / (1 + edge.simulations_n) as f32);
@@ -258,21 +252,30 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
         debug_assert!(parent_pos.status().is_ongoing());
 
         debug_assert_eq!(
-            {
-                let moves_expected: HashSet<Game::Move> = HashSet::from_iter(parent_pos.legal_moves());
-                moves_expected
-            },
-            {
-                let moves_actual: HashSet<Game::Move> =
-                    HashSet::from_iter(per_move_init_score.iter().map(|(m, _p)| m.clone()));
-                moves_actual
-            }
+            parent_pos.legal_moves().collect::<HashSet<_>>(),
+            per_move_init_score
+                .iter()
+                .map(|(m, _p)| m.clone())
+                .collect::<HashSet<_>>()
         );
 
-        for (m, p) in per_move_init_score {
+        for (m, prior) in per_move_init_score {
             let leaf_pos = parent_pos.moved_position(m.clone());
+            let (score, prior, simulations_n) = match leaf_pos.status() {
+                GameStatus::Ongoing => (0.0, prior, 0),
+                GameStatus::Finished(game_color) => {
+                    let score = GameColor::to_signed_one(game_color) as f32;
+                    let score = match parent_pos.turn() {
+                        GameColor::Player1 => score,
+                        GameColor::Player2 => -score,
+                    };
+                    // seed one visit so exploit stays == score instead of doubling on first backprop
+                    (score, 0.0, 1)
+                }
+            };
             let leaf_id = self.search_tree.add_node(MctsNode::from_position(leaf_pos));
-            self.search_tree.add_edge(parent_id, leaf_id, MctsEdge::new(m, p));
+            self.search_tree
+                .add_edge(parent_id, leaf_id, MctsEdge::new(m, prior, score, simulations_n));
         }
     }
 
@@ -355,14 +358,11 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             // Tree was saved from the last search
             // Look for the position in the first three layers of the tree
             // TODO consider increasing depth limit
-            match self.find_node_with_position(position, 3) {
-                Some(node) => {
-                    self.remove_all_but_subtree(node);
-                }
-                None => {
-                    self.search_tree.clear();
-                    self.root = None;
-                }
+            if let Some(node) = self.find_node_with_position(position, 3) {
+                self.remove_all_but_subtree(node);
+            } else {
+                self.search_tree.clear();
+                self.root = None;
             }
         }
 
@@ -384,14 +384,14 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
                 let e = edge.weight();
                 (e.m.clone(), e.simulations_n)
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         // normalize sim counts to create a valid distribution -> (move, simcount / simcount_total)
         let simcount_total: u32 = moves_and_simcounts.iter().map(|&(_, simcount)| simcount).sum();
         let res = moves_and_simcounts
             .into_iter()
             .map(|(m, simcount)| (m, simcount as f32 / simcount_total as f32))
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         self.search_duration_metric
             .set(search_start_time.elapsed().as_secs_f64());
@@ -421,11 +421,11 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
             let probabilities = moves_probs
                 .iter()
                 .map(|(_m, p)| p.powf(1.0 / temperature))
-                .collect_vec();
+                .collect::<Vec<_>>();
 
             /* normalize, prob -> prob / (probs sum) */
             let probs_sum: f32 = probabilities.iter().sum();
-            let probabilities = probabilities.iter().map(|p| p / probs_sum).collect_vec();
+            let probabilities = probabilities.iter().map(|p| p / probs_sum).collect::<Vec<_>>();
             let distribution = WeightedIndex::new(probabilities).unwrap();
             Some(moves_probs[distribution.sample(&mut self.rng)].0.clone())
         }
@@ -438,7 +438,7 @@ impl<Game: crate::game::Game> MctsPlayer<Game> {
 
         assert!((0.0..=1.0).contains(&self.prior_noise_epsilon));
 
-        let moves = self.search_tree.edges(node_id).map(|e| e.id()).collect_vec();
+        let moves = self.search_tree.edges(node_id).map(|e| e.id()).collect::<Vec<_>>();
         if moves.len() < 2 {
             return;
         }
@@ -501,5 +501,26 @@ impl TemperaturePolicy {
             .find(|(threshold, _t)| move_num < *threshold)
             .map(|(_n, t)| *t)
             .unwrap_or(self.last_temperature)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terminal_edge_exploit_stays_in_range() {
+        for value in [1.0f32, 0.0, -1.0] {
+            // seeded as create_children does for a terminal child
+            let mut edge = MctsEdge::new((), 0.0, value, 1);
+            for _ in 0..8 {
+                let exploit = edge.score_w / edge.simulations_n.max(1) as f32;
+                assert_eq!(exploit, value); // stays == value (was 2*value with a 0-visit seed)
+                assert!((-1.0..=1.0).contains(&exploit));
+                // one backprop of the terminal value
+                edge.score_w += value;
+                edge.simulations_n += 1;
+            }
+        }
     }
 }

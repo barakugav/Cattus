@@ -3,8 +3,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use itertools::Itertools;
-
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
 pub(crate) enum BatchState {
@@ -49,10 +47,10 @@ impl<I, O> Batcher<I, O> {
     pub fn apply(&self, input: I, deadline: Duration, apply_impl: impl FnOnce(Vec<I>) -> Vec<O>) -> O {
         if self.batch_size <= 1 {
             let outputs = apply_impl(vec![input]);
-            let [output] = outputs.try_into().map_err(|_| unreachable!()).unwrap();
+            let [output] = outputs.try_into().unwrap_or_else(|_| unreachable!());
             return output;
         }
-        let apply_impl = |xs| apply_impl(xs).into_iter().map(Some).collect_vec();
+        let apply_impl = |xs| apply_impl(xs).into_iter().map(Some).collect::<Vec<_>>();
 
         let backoff = crossbeam_utils::Backoff::new();
         let (batch_ptr, input_idx) = loop {

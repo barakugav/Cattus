@@ -18,16 +18,16 @@ pub fn ttt_position_from_str(s: &str) -> TttPosition {
                 'x' => pos.board_x.set(idx, true),
                 'o' => pos.board_o.set(idx, true),
                 '_' => {}
-                _ => panic!("unknown board char: {:?}", c),
+                _ => panic!("unknown board char: {c:?}"),
             },
             Ordering::Equal => {
                 pos.turn = match c {
                     'x' => GameColor::Player1,
                     'o' => GameColor::Player2,
-                    _ => panic!("unknown turn char: {:?}", c),
+                    _ => panic!("unknown turn char: {c:?}"),
                 }
             }
-            Ordering::Greater => panic!("too many turn chars: {:?}", c),
+            Ordering::Greater => panic!("too many turn chars: {c:?}"),
         }
     }
     pos.check_winner();
@@ -41,8 +41,8 @@ pub fn hex_position_from_str<const BOARD_SIZE: usize>(s: &str) -> HexPosition<BO
         .chars()
         .chunks(BOARD_SIZE)
         .into_iter()
-        .map(|chunk| chunk.into_iter().collect_vec())
-        .collect_vec();
+        .map(|chunk| chunk.into_iter().collect::<Vec<_>>())
+        .collect::<Vec<_>>();
     let board_lines = &lines[..BOARD_SIZE];
     let last_line = &lines[BOARD_SIZE];
 
@@ -54,7 +54,7 @@ pub fn hex_position_from_str<const BOARD_SIZE: usize>(s: &str) -> HexPosition<BO
                 'e' | '.' => {}
                 'r' => board_red.set(row * BOARD_SIZE + col, true),
                 'b' => board_blue.set(row * BOARD_SIZE + col, true),
-                _ => panic!("unknown board char: {:?}", c),
+                _ => panic!("unknown board char: {c:?}"),
             }
         }
     }
@@ -62,7 +62,7 @@ pub fn hex_position_from_str<const BOARD_SIZE: usize>(s: &str) -> HexPosition<BO
     let turn = match last_line[0] {
         'r' => GameColor::Player1,
         'b' => GameColor::Player2,
-        unknown_turn_char => panic!("unknown turn char: {:?}", unknown_turn_char),
+        unknown_turn_char => panic!("unknown turn char: {unknown_turn_char:?}"),
     };
 
     HexPosition::new_from_board(board_red, board_blue, turn)

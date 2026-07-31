@@ -81,6 +81,15 @@ impl GameColor {
             None => 0,
         }
     }
+
+    pub fn from_signed_one(value: i32) -> Option<GameColor> {
+        match value {
+            1 => Some(GameColor::Player1),
+            -1 => Some(GameColor::Player2),
+            0 => None,
+            _ => panic!("Invalid signed one value for GameColor"),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

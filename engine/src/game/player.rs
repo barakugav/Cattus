@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use rand::prelude::*;
 
 use crate::game::Position;
@@ -29,11 +28,7 @@ impl PlayerRand {
 
 impl<Game: crate::game::Game> GamePlayer<Game> for PlayerRand {
     fn next_move(&mut self, pos_history: &[Game::Position]) -> Option<Game::Move> {
-        let moves = pos_history.last().unwrap().legal_moves().collect_vec();
-        if moves.is_empty() {
-            None
-        } else {
-            Some(moves[self.rand.random_range(0..moves.len())].clone())
-        }
+        let moves = pos_history.last().unwrap().legal_moves().collect::<Vec<_>>();
+        moves.choose(&mut self.rand).cloned()
     }
 }

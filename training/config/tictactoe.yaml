@@ -1,6 +1,6 @@
 game: tictactoe
 iterations: 30
-model_num: 4
+model_num: 1
 debug: false
 working_area: "{CATTUS_TRAIN_TOP}/workarea/{GAME_NAME}"
 
@@ -14,18 +14,18 @@ model:
 
 engine:
     mcts:
-        sim_num: 300
+        sim_num: 3
         explore_factor: 1.41421
         temperature_policy:
             - [9999, 0.0]
-        prior_noise_alpha: 0.03
+        prior_noise_alpha: 0.5
         prior_noise_epsilon: 0.25
         cache_size: 1000000
     model:
-        batch_size: 4
+        batch_size: 1
         inference:
             engine: onnx-ort
-    threads: 8
+    threads: 1
 
 self_play:
     engine_overrides:
@@ -47,7 +47,7 @@ training:
         - [10, 0.01]
         - [20, 0.001]
         - [0.0001]
-    # l2reg: 0.0001
-    use_train_data_across_runs: true
+    weight_decay: 0.0001
+    use_train_data_across_runs: false
     threads: 4
     device: null

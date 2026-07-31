@@ -2,10 +2,9 @@ import argparse
 import platform
 import shutil
 import tempfile
+import urllib.request
 import zipfile
 from pathlib import Path
-
-import requests
 
 CRATE_DIR = Path(__file__).parent.parent.resolve()
 PYTORCH_DIR = CRATE_DIR / "third-party" / "libtorch"
@@ -55,11 +54,12 @@ def download_and_extract_zip(url: str, extract_to: Path):
     with tempfile.TemporaryDirectory() as tmpdirname:
         zip_path = Path(tmpdirname) / "temp.zip"
         print(f"Downloading from {url}...")
-        response = requests.get(url, stream=True)
-        response.raise_for_status()
-        with open(zip_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with (
+            urllib.request.urlopen(req, timeout=30) as response,
+            open(zip_path, "wb") as f,
+        ):
+            shutil.copyfileobj(response, f)
 
         print(f"Extracting to {extract_to}...")
         extracted_dir = Path(tmpdirname) / "extracted"

@@ -2,11 +2,11 @@ use std::fmt::{self, Display};
 
 use crate::game::{Bitboard, Game, GameColor, GameStatus, Move, Position};
 
-pub fn color_to_str(c: Option<GameColor>) -> String {
+pub fn color_to_str(c: Option<GameColor>) -> &'static str {
     match c {
-        None => String::from("None"),
-        Some(GameColor::Player1) => String::from("X"),
-        Some(GameColor::Player2) => String::from("O"),
+        None => "None",
+        Some(GameColor::Player1) => "X",
+        Some(GameColor::Player2) => "O",
     }
 }
 
@@ -158,7 +158,7 @@ impl TttPosition {
     }
 
     pub fn check_winner(&mut self) {
-        let winning_sequences = vec![
+        let winning_sequences = [
             0b111000000, // row 1
             0b000111000, // row 2
             0b000000111, // row 3
@@ -192,7 +192,7 @@ impl Display for TttPosition {
                     Some(GameColor::Player1) => 'X',
                     Some(GameColor::Player2) => 'O',
                 };
-                write!(f, "{} ", ch)?;
+                write!(f, "{ch} ")?;
             }
             writeln!(f)?;
         }
@@ -219,13 +219,8 @@ impl Position for TttPosition {
     fn legal_moves(&self) -> impl Iterator<Item = TttMove> {
         (0..TttGame::BOARD_SIZE)
             .flat_map(|r| (0..TttGame::BOARD_SIZE).map(move |c| (r, c)))
-            .filter_map(|(r, c)| {
-                if self.get_tile(r, c).is_none() {
-                    Some(TttMove::new(r, c))
-                } else {
-                    None
-                }
-            })
+            .filter(|&(r, c)| self.get_tile(r, c).is_none())
+            .map(|(r, c)| TttMove::new(r, c))
     }
 
     fn moved_position(&self, m: TttMove) -> Self {
@@ -294,11 +289,11 @@ mod tests {
 
     use crate::game::player::{GamePlayer, PlayerRand};
     use crate::game::{Bitboard, Game, GameColor, GameStatus, Move, Position};
-    use crate::ttt::{TttGame, TttMove, TttPosition};
+    use crate::ttt::{TttGame, TttPosition};
 
     #[test]
     fn simple_game_and_mate() {
-        let to_pos = |s: &str| ttt_position_from_str(s);
+        let to_pos = ttt_position_from_str;
         assert_eq!(
             to_pos("xxxoo____o").status(),
             GameStatus::Finished(Some(GameColor::Player1))
@@ -328,7 +323,7 @@ mod tests {
 
     #[test]
     fn flip() {
-        for pos in vec![
+        for pos in [
             "oxx_o_o__o",
             "o_____xx_o",
             "xx_xx_xo_o",
@@ -363,8 +358,8 @@ mod tests {
                 assert_eq!(pos, pos_t.flipped());
 
                 /* Assert flip of moves of flip are original moves */
-                let moves: HashSet<TttMove> = HashSet::from_iter(pos.legal_moves());
-                let moves_tt: HashSet<TttMove> = HashSet::from_iter(pos_t.legal_moves().map(|m| m.flipped()));
+                let moves = pos.legal_moves().collect::<HashSet<_>>();
+                let moves_tt = pos_t.legal_moves().map(|m| m.flipped()).collect::<HashSet<_>>();
                 assert_eq!(moves, moves_tt);
 
                 /* Assert game result is the same */
@@ -393,16 +388,16 @@ mod tests {
                     'x' => pos.board_x.set(idx, true),
                     'o' => pos.board_o.set(idx, true),
                     '_' => {}
-                    _ => panic!("unknown board char: {:?}", c),
+                    _ => panic!("unknown board char: {c:?}"),
                 },
                 Ordering::Equal => {
                     pos.turn = match c {
                         'x' => GameColor::Player1,
                         'o' => GameColor::Player2,
-                        _ => panic!("unknown turn char: {:?}", c),
+                        _ => panic!("unknown turn char: {c:?}"),
                     }
                 }
-                Ordering::Greater => panic!("too many turn chars: {:?}", c),
+                Ordering::Greater => panic!("too many turn chars: {c:?}"),
             }
         }
         pos.check_winner();

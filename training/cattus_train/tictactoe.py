@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import numpy as np
-import torch.nn as nn
 from construct import Array, Float32l, Int8sl, Int64ul, Struct
+from torch import nn
 
 from cattus_train import net_utils
 from cattus_train.trainable_game import DataEntry, DataEntryParseError, Game
@@ -29,7 +29,7 @@ class TicTacToe(Game):
             entry_bytes = f.read()
         if len(entry_bytes) != self.ENTRY_FORMAT.sizeof():
             raise DataEntryParseError(
-                "invalid training data file: {} ({} != {})".format(path, len(entry_bytes), self.ENTRY_FORMAT.sizeof())
+                f"invalid training data file: {path} ({len(entry_bytes)} != {self.ENTRY_FORMAT.sizeof()})"
             )
         entry = self.ENTRY_FORMAT.parse(entry_bytes)
         planes = np.array(entry.planes, dtype=np.uint64)

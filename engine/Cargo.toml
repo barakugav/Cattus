@@ -50,8 +50,3 @@ stockfish = ["pleco"]
 name = "cattus"
 path = "src/bin/cattus.rs"
 required-features = ["stockfish"]
-
-[[example]]
-name = "chess_cli_vs_stockfish"
-path = "examples/chess_cli_vs_stockfish.rs"
-required-features = ["stockfish"]

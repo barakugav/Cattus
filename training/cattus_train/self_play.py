@@ -6,7 +6,7 @@ import warnings
 from pathlib import Path
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from cattus_train.config import (
     EngineConfig,
@@ -121,7 +121,7 @@ def _export_model_impl(
     cfg: InferenceConfig,
     input_shape: tuple[int, ...],
 ):
-    sample_input = torch.randn(input_shape)
+    sample_input = torch.randn(input_shape, device=next(model.parameters()).device)
 
     match cfg:
         case TorchPyConfig() | TorchTchRsConfig():  # torch.jit
@@ -175,8 +175,8 @@ def _export_model_impl(
         case OnnxOrtConfig() | OnnxTractConfig():  # onnx
             with ONNX_EXPORT_LOCK:
                 torch.onnx.export(
-                    model,
-                    sample_input,
+                    model.to("cpu"),
+                    sample_input.to("cpu"),
                     model_path,
                     verbose=False,
                     input_names=["planes"],

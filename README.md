@@ -20,7 +20,7 @@ engine = chess.engine.SimpleEngine.popen_uci(["cattus.exe", "--sim-num", "10000"
 
 # Let Cattus play against itself
 board = chess.Board()
-while  not board.is_game_over() and  not board.can_claim_draw():
+while not board.is_game_over() and not board.can_claim_draw():
 	result = engine.play(board, chess.engine.Limit(time=20))
 	board.push(result.move)
 

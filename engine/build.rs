@@ -74,6 +74,6 @@ fn main() {
 }
 
 fn rerun_env(env_var: &str) -> Option<String> {
-    println!("cargo::rerun-if-env-changed={}", env_var);
+    println!("cargo::rerun-if-env-changed={env_var}");
     std::env::var(env_var).ok()
 }

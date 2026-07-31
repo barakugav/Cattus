@@ -2,7 +2,6 @@ use crate::chess::{ChessGame, ChessMove, ChessPosition};
 use crate::game::player::GamePlayer;
 use crate::game::Position;
 use crate::mcts::{MctsParams, MctsPlayer};
-use itertools::Itertools;
 use std::collections::HashMap;
 use std::io;
 
@@ -29,14 +28,13 @@ impl UCI {
         let mut line = String::new();
         loop {
             line.clear();
-            let read_res = io::stdin().read_line(&mut line);
-            if read_res.is_err() {
-                eprintln!("read line error: {}", read_res.err().unwrap());
+            if let Err(e) = io::stdin().read_line(&mut line) {
+                eprintln!("read line error: {e}");
                 continue;
             }
-            line = line.trim().to_string();
-            log(format!("[From GUI] {}", line));
-            let (command, args) = Self::parse_command(&line);
+            let line = line.trim();
+            log(format!("[From GUI] {line}"));
+            let (command, args) = Self::parse_command(line);
 
             match command {
                 "uci" => {
@@ -121,7 +119,10 @@ impl UCI {
         }
         #[allow(unused)]
         let go_args = GoParams {
-            searchmoves: args.values_iter("searchmoves").map(|s| s.to_string()).collect_vec(),
+            searchmoves: args
+                .values_iter("searchmoves")
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>(),
             ponder: args.flag("ponder"),
             wtime: args.value("wtime").and_then(|s| s.parse::<u64>().ok()),
             btime: args.value("btime").and_then(|s| s.parse::<u64>().ok()),
@@ -141,12 +142,16 @@ impl UCI {
 
     fn send_response<S: Into<String>>(&self, s: S) {
         let s = s.into();
-        log(format!("[To GUI] {}", s));
-        println!("{}", s);
+        log(format!("[To GUI] {s}"));
+        println!("{s}");
     }
 
     fn parse_command(s: &str) -> (&str, Vec<&str>) {
-        let mut words = s.split(' ').map(|s| s.trim()).filter(|s| !s.is_empty()).collect_vec();
+        let mut words = s
+            .split(' ')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>();
         assert!(!words.is_empty(), "empty command");
         let command = words.remove(0);
         (command, words)
