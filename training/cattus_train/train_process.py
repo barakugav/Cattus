@@ -268,7 +268,12 @@ class TrainProcess:
                 model.to(self.cfg.training.device)
 
                 # TODO: share optimizer between epochs
-                optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+                optimizer = torch.optim.SGD(
+                    model.parameters(),
+                    lr=lr,
+                    momentum=0.9,
+                    weight_decay=self.cfg.training.weight_decay,
+                )
 
                 def policy_head_accuracy(output, target):
                     output, target = mask_illegal_moves(output, target)

@@ -97,6 +97,7 @@ class SelfPlayConfig:
 class TrainingConfig:
     batch_size: int
     learning_rate: list[list[float]]
+    weight_decay: float = 1e-4
     use_train_data_across_runs: bool = False
     threads: Optional[int] = 1
     latest_data_entries: int

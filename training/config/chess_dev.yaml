@@ -128,9 +128,8 @@ training:
         - [24, 0.001]
         - [0.0001]
 
-    # L2 regularization factor
-    # suggested value: 10^-4
-    # l2reg: 0.00005
+    # L2 weight decay for the SGD optimizer
+    weight_decay: 0.0001
 
     # If true, training data will be reused from multiple runs, always with preference to newer data
     # Suggested value: true
