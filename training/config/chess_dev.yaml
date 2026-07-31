@@ -4,7 +4,7 @@ game: "chess"
 
 # Number of iterations of (self-play, train, compare)
 # suggested value: > 100
-iterations: 100
+iterations: 200
 
 # Number of trained models
 # Multiple models will be trained, and the best one will generate the training data
@@ -29,27 +29,26 @@ model:
 
     # Number of residual blocks, not including the first conv layer
     # suggested value: 7-39
-    residual_block_num: 7
+    residual_block_num: 11
 
     # Number of filters in the conv layers within each residual block
     # suggested value: 32-256
-    # WARN 32 seems to cause error
-    residual_filter_num: 16
+    residual_filter_num: 24
 
     # Number of channels in the conv layer of the value head
     # suggested value: 8-32
-    value_head_conv_output_channels_num: 8
+    value_head_conv_output_channels_num: 32
 
     # Number of channels in the conv layer of the policy head
     # suggested value: 8-32
-    policy_head_conv_output_channels_num: 8
+    policy_head_conv_output_channels_num: 32
 
 engine:
     # Monte Carlo Tree Search alg params
     mcts:
         # Number of simulation performed at each search
         # suggested value: 600-1400
-        sim_num: 100
+        sim_num: 200
 
         # Explore vs exploit factor
         # suggested value: sqrt(2)
@@ -133,7 +132,7 @@ training:
 
     # If true, training data will be reused from multiple runs, always with preference to newer data
     # Suggested value: true
-    use_train_data_across_runs: true
+    use_train_data_across_runs: false
 
     # cpu/gpu/mps or null for automatic selection
     device: null
