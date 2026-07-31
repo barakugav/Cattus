@@ -1,6 +1,6 @@
 import dataclasses
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic.dataclasses import Field, dataclass
 
@@ -8,7 +8,7 @@ from pydantic.dataclasses import Field, dataclass
 @dataclass(config={"extra": "allow"}, kw_only=True)
 class ModelConfig:
     type: str
-    base: Optional[Path] = None
+    base: Path | None = None
 
 
 @dataclass(config={"extra": "forbid"}, kw_only=True)
@@ -99,7 +99,7 @@ class TrainingConfig:
     learning_rate: list[list[float]]
     weight_decay: float = 1e-4
     use_train_data_across_runs: bool = False
-    threads: Optional[int] = 1
+    threads: int | None = 1
     latest_data_entries: int
     epoch_size: int
     device: Literal["cpu", "cuda", "mps"] | None = None
@@ -108,9 +108,9 @@ class TrainingConfig:
 @dataclass(config={"extra": "forbid"}, kw_only=True)
 class Config:
     working_area: Path
-    games_dir: Optional[Path] = None
-    models_dir: Optional[Path] = None
-    metrics_dir: Optional[Path] = None
+    games_dir: Path | None = None
+    models_dir: Path | None = None
+    metrics_dir: Path | None = None
     game: str
     model: ModelConfig
     engine: EngineConfig

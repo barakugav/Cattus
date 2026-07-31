@@ -11,17 +11,15 @@ import tempfile
 import time
 from dataclasses import asdict
 from datetime import datetime, timezone
-from itertools import islice
+from itertools import islice, pairwise
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import tqdm
-from torch import Tensor
+from torch import Tensor, nn
 from torch.utils.data import DataLoader, RandomSampler
 
 from cattus_train.chess import Chess
@@ -36,9 +34,11 @@ CATTUS_TOP = Path(__file__).parent.parent.parent.resolve()
 CATTUS_TRAIN_TOP = CATTUS_TOP / "training"
 SELF_PLAY_CRATE_DIR = CATTUS_TRAIN_TOP / "self-play"
 
+logger = logging.getLogger(__name__)
+
 
 class TrainProcess:
-    def __init__(self, cfg: Config, run_id: Optional[str] = None):
+    def __init__(self, cfg: Config, run_id: str | None = None):
         if run_id is None:
             run_id = datetime.now(timezone.utc).strftime("%y%m%d") + "".join(
                 random.choice(string.ascii_lowercase) for _ in range(4)
@@ -84,11 +84,11 @@ class TrainProcess:
             case None:
                 self._base_model_path = self._save_model(self._create_model())
             case "[latest]":
-                logging.warning("Choosing latest model based on directory name format")
+                logger.warning("Choosing latest model based on directory name format")
                 all_models = list(cfg.models_dir.iterdir())
                 if len(all_models) == 0:
                     raise ValueError("Model [latest] was requested, but no existing models were found.")
-                self._base_model_path = sorted(all_models)[-1]
+                self._base_model_path = max(all_models)
             case Path():
                 self._base_model_path = cfg.model.base
             case _:
@@ -101,20 +101,20 @@ class TrainProcess:
                 cfg.training.device = "mps"
             else:
                 cfg.training.device = "cpu"
-            logging.debug("Training device was not specified, using %s", cfg.training.device)
+            logger.debug("Training device was not specified, using %s", cfg.training.device)
 
         self._lr_scheduler = LearningRateScheduler(cfg.training.learning_rate)
 
     def run_training_loop(self):
         metrics_filename = self.cfg.metrics_dir / f"{self.run_id}.csv"
 
-        logging.info("Starting training process with config:")
-        logging.info(f"Configuration:\n{dic2str(asdict(self.cfg))}")
-        logging.info("Run ID:\t%s", self.run_id)
-        logging.info("Base model:\t%s", self._base_model_path)
-        logging.info("Metrics file:\t%s", metrics_filename)
+        logger.info("Starting training process with config:")
+        logger.info(f"Configuration:\n{dic2str(asdict(self.cfg))}")
+        logger.info("Run ID:\t%s", self.run_id)
+        logger.info("Base model:\t%s", self._base_model_path)
+        logger.info("Metrics file:\t%s", metrics_filename)
 
-        logging.info("Building Self-play executable...")
+        logger.info("Building Self-play executable...")
         profile = "dev" if self.cfg.debug else "release"
         self._self_play_exec_path.parent.mkdir(parents=True, exist_ok=True)
         self._model_compare_exec_path.parent.mkdir(parents=True, exist_ok=True)
@@ -142,7 +142,7 @@ class TrainProcess:
 
         # Self play and training main loop
         for iter_num in range(self.cfg.iterations):
-            logging.info(f"Training iteration {iter_num}")
+            logger.info(f"Training iteration {iter_num}")
             self._metrics = {}
 
             # Generate training data using the best model
@@ -158,10 +158,10 @@ class TrainProcess:
             self._write_metrics(metrics_filename)
 
     def _self_play(self, model_dir: Path):
-        logging.info("Self playing using model: %s", model_dir)
+        logger.info("Self playing using model: %s", model_dir)
 
         games_dir = self.cfg.games_dir / self.run_id
-        data_entries_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
+        data_entries_dir = games_dir / datetime.now(timezone.utc).strftime("%y%m%d_%H%M%S_%f")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             cfg_file = Path(tmp_dir) / "config.json"
@@ -208,11 +208,11 @@ class TrainProcess:
         )
 
         if len(DataSet(self._game, train_data_dir, self.cfg.training, device=self.cfg.training.device)) == 0:
-            logging.warning("No training data in %s, skipping training", train_data_dir)
+            logger.warning("No training data in %s, skipping training", train_data_dir)
             return models
 
         lr = self._lr_scheduler.get_lr(iter_num)
-        logging.debug("Training models with learning rate %f", lr)
+        logger.debug("Training models with learning rate %f", lr)
 
         training_durations = [None] * len(models)
         trained_models = [None] * len(models)
@@ -227,7 +227,7 @@ class TrainProcess:
             num_samples = self.cfg.training.epoch_size
             max_num_samples = len(data_set) * 4
             if num_samples > max_num_samples:
-                logging.debug(
+                logger.debug(
                     f"Requested epoch size {num_samples} is larger than available data size {len(data_set)},"
                     f" reducing epoch size to {max_num_samples}",
                 )
@@ -286,7 +286,7 @@ class TrainProcess:
                     target = torch.argmax(target, dim=1)
                     return (predicted == target).float().mean()
 
-                def run_epoch(data_loader, training: bool):
+                def run_epoch(data_loader, training: bool, *, m_idx=m_idx, model=model, optimizer=optimizer):
                     metrics: dict[str, list[Tensor]] = {}
 
                     stage = "Training" if training else "Testing"
@@ -333,7 +333,7 @@ class TrainProcess:
 
                 train_metrics_str = "\n".join([f"\t\t{key}: {value:.4f}" for key, value in train_metrics.items()])
                 test_metrics_str = "\n".join([f"\t\t{key}: {value:.4f}" for key, value in test_metrics.items()])
-                logging.info(
+                logger.info(
                     f"Model{m_idx}\n\ttraining metrics:\n{train_metrics_str}\n\ttesting metrics:\n{test_metrics_str}"
                 )
 
@@ -344,7 +344,7 @@ class TrainProcess:
             # Divide the training into jobs
             jobs_per_cpu = len(models) // workers_num
             indices = np.arange(0, len(models) + jobs_per_cpu, jobs_per_cpu)
-            jobs = [models[i:j] for i, j in zip(indices[:-1], indices[1:])]
+            jobs = [models[i:j] for i, j in pairwise(indices)]
 
             # Execute all jobs
             with ThreadPool(len(jobs)) as pool:
@@ -360,16 +360,16 @@ class TrainProcess:
     def _compare_models(self, best_model, latest_models) -> tuple[nn.Module, Path]:
         if self.cfg.self_play.model_compare.games_num == 0:
             assert len(latest_models) == 1, "Model comparison can be skipped only when one model is trained"
-            logging.debug("Skipping model comparison, considering latest model as best")
+            logger.debug("Skipping model comparison, considering latest model as best")
             return latest_models[0]
 
-        logging.info("Comparing latest models to best model...")
+        logger.info("Comparing latest models to best model...")
         for model_idx, (latest_model, latest_model_path) in enumerate(latest_models):
             # Compare the best model to the latest/trained model
             with tempfile.TemporaryDirectory() as tmp_dir:
                 # take the opportunity to generate more games to main games directory
                 games_dir = self.cfg.games_dir / self.run_id
-                best_games_dir = games_dir / datetime.now().strftime("%y%m%d_%H%M%S_%f")
+                best_games_dir = games_dir / datetime.now(timezone.utc).strftime("%y%m%d_%H%M%S_%f")
                 trained_games_dir = Path(tmp_dir) / "games"
 
                 compare_start_time = time.time()
@@ -379,7 +379,7 @@ class TrainProcess:
                 winning, losing = trained_wr, best_wr
                 self._metrics["model_compare_duration"] = time.time() - compare_start_time
                 self._metrics[f"trained_model_win_rate_{model_idx}"] = winning
-                logging.debug(f"Trained model winning rate: {winning}")
+                logger.debug(f"Trained model winning rate: {winning}")
 
                 if winning > self.cfg.self_play.model_compare.switching_winning_threshold:
                     best_model = (latest_model, latest_model_path)
@@ -388,7 +388,7 @@ class TrainProcess:
                     for filename in os.listdir(trained_games_dir):
                         shutil.move(trained_games_dir / filename, best_games_dir)
                 elif len(latest_models) == 1 and losing > self.cfg.self_play.model_compare.warning_losing_threshold:
-                    logging.warning("New model is worse than previous one, losing ratio: %f", losing)
+                    logger.warning("New model is worse than previous one, losing ratio: %f", losing)
         return best_model
 
     def _compare_model_impl(self, model1_dir: Path, model2_dir: Path, model1_games_dir: Path, model2_games_dir: Path):
@@ -426,7 +426,7 @@ class TrainProcess:
         return self._game.create_model(self._net_type, self.cfg.model.__dict__.copy())
 
     def _save_model(self, model: nn.Module) -> Path:
-        model_time = datetime.now().strftime("%y%m%d_%H%M%S_%f") + "_{0:04x}".format(random.randint(0, 1 << 16))
+        model_time = datetime.now(timezone.utc).strftime("%y%m%d_%H%M%S_%f") + f"_{random.randint(0, 1 << 16):04x}"
         model_dir = self.cfg.models_dir / f"model_{model_time}"
         model_dir.mkdir(parents=True)
 
@@ -492,7 +492,8 @@ class TrainProcess:
             "self_play_duration",
             "training_duration",
             "model_compare_duration",
-        ] + sum(per_model_columns, [])
+            *(col for per_model in per_model_columns for col in per_model),
+        ]
 
         values = [str(self._metrics.get(metric, "")) for metric in columns]
 

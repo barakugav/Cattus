@@ -1,7 +1,6 @@
 import random
 
 import numpy as np
-
 from cattus_train.chess import NN_INDEX_TO_MOVE, Chess
 from cattus_train.data_set import DataSet
 from cattus_train.trainable_game import DataEntry

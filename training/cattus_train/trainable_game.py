@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-import torch.nn as nn
+from torch import nn
 
 
 @dataclass(kw_only=True, slots=True)

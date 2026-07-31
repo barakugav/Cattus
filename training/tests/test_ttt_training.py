@@ -3,9 +3,10 @@ import os
 import tempfile
 from pathlib import Path
 
+import cattus_train
 import yaml
 
-import cattus_train
+logger = logging.getLogger(__name__)
 
 
 def test_ttt_training():
@@ -61,15 +62,15 @@ training:
     device: null
 """
 
-        logging.info("Running self play and generating new models...")
+        logger.info("Running self play and generating new models...")
         cattus_train.train(cattus_train.Config(**yaml.safe_load(config)), run_id="test")
 
-        logging.info("Checking quality of training...")
+        logger.info("Checking quality of training...")
         metrics = _get_metrics(tmp_dir)
         assert float(metrics["model0/test/loss"]) > 0
         assert float(metrics["model0/test/value_accuracy"]) > 0.6
         assert float(metrics["model0/test/policy_accuracy"]) > 0.4
-        logging.info("Training quality is sufficient")
+        logger.info("Training quality is sufficient")
 
 
 def _get_metrics(working_area):

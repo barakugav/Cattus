@@ -6,7 +6,7 @@ import warnings
 from pathlib import Path
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from cattus_train.config import (
     EngineConfig,

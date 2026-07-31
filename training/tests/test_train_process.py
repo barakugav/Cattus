@@ -2,7 +2,6 @@ import tempfile
 
 import torch
 import yaml
-
 from cattus_train.config import Config
 from cattus_train.train_process import TrainProcess, value_head_accuracy, win_rate
 

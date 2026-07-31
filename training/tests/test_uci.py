@@ -6,7 +6,6 @@ from pathlib import Path
 
 import chess
 import chess.engine
-
 from cattus_train.config import MctsConfig, OnnxOrtConfig
 
 TESTS_DIR = Path(__file__).parent.resolve()

@@ -2,9 +2,10 @@ import logging
 import os
 import tempfile
 
+import cattus_train
 import yaml
 
-import cattus_train
+logger = logging.getLogger(__name__)
 
 
 def _test_convnetv1(game_name):
@@ -54,7 +55,7 @@ training:
     device: null
 """
 
-        logging.info("Running self play and generating new models...")
+        logger.info("Running self play and generating new models...")
         cattus_train.train(cattus_train.Config(**yaml.safe_load(config)))
 
 

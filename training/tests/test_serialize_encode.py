@@ -5,7 +5,6 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-
 from cattus_train.chess import Chess
 from cattus_train.data_set import DataSet
 from cattus_train.hex import Hex
@@ -16,6 +15,7 @@ TESTS_DIR = Path(__file__).parent.resolve()
 SELF_PLAY_TOP = TESTS_DIR.parent / "self-play"
 
 logging.basicConfig(level=logging.DEBUG, format="[Serialize Encode Test]: %(message)s")
+logger = logging.getLogger(__name__)
 
 
 def test_ttt_serialize_encode():
@@ -38,42 +38,48 @@ def test_hex_serialize_encode():
         "hex11",
         Hex(11),
         [
-            "reeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "eeeeeeeeeee"
-            "r",
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "ererererere"
-            "rererererer"
-            "r",
-            "reeeeeeeeee"
-            "ereeeeeeeee"
-            "eereeeeeeee"
-            "eeereeeeeee"
-            "eeeereeeeee"
-            "eeeeereeeee"
-            "eeeeeereeee"
-            "eeeeeeereee"
-            "eeeeeeeeree"
-            "eeeeeeeeere"
-            "eeeeeeeeeer"
-            "r",
+            (
+                "reeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "eeeeeeeeeee"
+                "r"
+            ),
+            (
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "ererererere"
+                "rererererer"
+                "r"
+            ),
+            (
+                "reeeeeeeeee"
+                "ereeeeeeeee"
+                "eereeeeeeee"
+                "eeereeeeeee"
+                "eeeereeeeee"
+                "eeeeereeeee"
+                "eeeeeereeee"
+                "eeeeeeereee"
+                "eeeeeeeeree"
+                "eeeeeeeeere"
+                "eeeeeeeeeer"
+                "r"
+            ),
         ],
     )
 
@@ -155,4 +161,4 @@ if __name__ == "__main__":
     test_ttt_serialize_encode()
     test_hex_serialize_encode()
     test_chess_serialize_encode()
-    logging.info("test passed")
+    logger.info("test passed")
