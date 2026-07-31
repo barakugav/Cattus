@@ -124,4 +124,9 @@ class Config:
         return self.engine.copy_with_overrides(self.self_play.engine_overrides)
 
     def model_compare_engine_cfg(self) -> EngineConfig:
-        return self.engine.copy_with_overrides(self.self_play.model_compare.engine_overrides)
+        cfg = self.engine.copy_with_overrides(self.self_play.model_compare.engine_overrides)
+
+        # Disable exploration noise for model comparison games
+        cfg = cfg.copy_with_overrides({"mcts": {"prior_noise_alpha": 0.0, "prior_noise_epsilon": 0.0}})
+
+        return cfg
