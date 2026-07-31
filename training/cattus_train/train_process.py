@@ -233,6 +233,11 @@ class TrainProcess:
                 )
                 num_samples = max_num_samples
 
+            if num_samples < self.cfg.training.batch_size:
+                raise ValueError(
+                    f"Training epoch has only {num_samples} samples for batch_size {self.cfg.training.batch_size}"
+                )
+
             def create_data_loader():
                 sampler = RandomSampler(
                     data_set,
