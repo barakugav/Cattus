@@ -6,13 +6,11 @@ use std::str::FromStr;
 use crate::game::{Bitboard, Game, GameColor, GameStatus, Move, Position};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct ChessMove {
-    m: chess::ChessMove,
-}
+pub struct ChessMove(chess::ChessMove);
 
 impl ChessMove {
     pub fn new(m: chess::ChessMove) -> Self {
-        Self { m }
+        Self(m)
     }
 
     pub fn from_san(pos: &ChessPosition, move_str: &str) -> Result<Self, chess::Error> {
@@ -47,14 +45,14 @@ impl ChessMove {
     }
 
     pub fn get_raw(&self) -> &chess::ChessMove {
-        &self.m
+        &self.0
     }
 
     pub fn to_idx(&self) -> usize {
-        if let Some(promotion) = self.m.get_promotion() {
+        if let Some(promotion) = self.0.get_promotion() {
             let promotions_base = 64 * 64;
-            let sf = self.m.get_source().get_file().to_index();
-            let df = self.m.get_dest().get_file().to_index();
+            let sf = self.0.get_source().get_file().to_index();
+            let df = self.0.get_dest().get_file().to_index();
             let move_chunk = (sf * 2 + df) * 4;
             let piece_offset = match promotion {
                 chess::Piece::Queen => 0,
@@ -65,13 +63,13 @@ impl ChessMove {
             };
             promotions_base + move_chunk + piece_offset
         } else {
-            self.m.get_source().to_index() * 64 + self.m.get_dest().to_index()
+            self.0.get_source().to_index() * 64 + self.0.get_dest().to_index()
         }
     }
 }
 impl AsRef<chess::ChessMove> for ChessMove {
     fn as_ref(&self) -> &chess::ChessMove {
-        &self.m
+        &self.0
     }
 }
 impl Move for ChessMove {
@@ -82,9 +80,9 @@ impl Move for ChessMove {
         let flip_file = |f: chess::File| f;
         let flip_square =
             |s: chess::Square| chess::Square::make_square(flip_rank(s.get_rank()), flip_file(s.get_file()));
-        let s = flip_square(self.m.get_source());
-        let d = flip_square(self.m.get_dest());
-        let promotion = self.m.get_promotion();
+        let s = flip_square(self.0.get_source());
+        let d = flip_square(self.0.get_dest());
+        let promotion = self.0.get_promotion();
         ChessMove::new(chess::ChessMove::new(s, d, promotion))
     }
 
@@ -95,7 +93,7 @@ impl Move for ChessMove {
 
 impl Display for ChessMove {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.m.fmt(f)
+        self.0.fmt(f)
     }
 }
 
@@ -169,7 +167,7 @@ impl ChessPosition {
     }
 
     pub fn is_valid_move(&self, m: ChessMove) -> bool {
-        self.status().is_ongoing() && self.board.legal(m.m)
+        self.status().is_ongoing() && self.board.legal(m.0)
     }
 
     pub fn get_raw_board(&self) -> &chess::Board {
@@ -356,11 +354,11 @@ impl Position for ChessPosition {
     fn moved_position(&self, m: ChessMove) -> Self {
         assert!(self.is_valid_move(m));
 
-        let mut next_board = ChessPosition::new_from_board(self.board.make_move_new(m.m));
+        let mut next_board = ChessPosition::new_from_board(self.board.make_move_new(m.0));
 
-        let piece = self.board.piece_on(m.m.get_source());
+        let piece = self.board.piece_on(m.0.get_source());
         let is_pawn = piece == Some(chess::Piece::Pawn);
-        let is_atk = self.board.piece_on(m.m.get_dest()).is_some();
+        let is_atk = self.board.piece_on(m.0.get_dest()).is_some();
 
         next_board.fifty_rule_count = if is_pawn || is_atk {
             0

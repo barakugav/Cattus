@@ -54,9 +54,9 @@ fn make_player<const BOARD_SIZE: usize>(player: Player, args: &Args) -> Box<dyn 
             let value_func = Arc::new(NNetwork::<HexGame<BOARD_SIZE>>::new(
                 args.model_path
                     .as_ref()
-                    .expect("--model_path is required for the mcts player"),
+                    .expect("--model-path is required for the mcts player"),
                 InferenceConfig::default(),
-                args.batch_size.expect("--batch_size is required for the mcts player"),
+                args.batch_size.expect("--batch-size is required for the mcts player"),
                 Some(cache),
             ));
             Box::new(MctsPlayer::new(MctsParams {

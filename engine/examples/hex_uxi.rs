@@ -33,7 +33,7 @@ fn make_player(args: &Args) -> Box<dyn GamePlayer<HexGameStandard>> {
             let value_func = Arc::new(NNetwork::<HexGameStandard>::new(
                 args.model_path
                     .as_ref()
-                    .expect("--model_path is required for the mcts player"),
+                    .expect("--model-path is required for the mcts player"),
                 InferenceConfig::default(),
                 args.batch_size.expect("--batch_size is required for the mcts player"),
                 None,

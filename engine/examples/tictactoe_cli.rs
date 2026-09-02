@@ -38,7 +38,7 @@ fn make_player(player: Player, args: &Args) -> Box<dyn GamePlayer<TttGame>> {
             let value_func = Arc::new(NNetwork::<TttGame>::new(
                 args.model_path
                     .as_ref()
-                    .expect("--model_path is required for the mcts player"),
+                    .expect("--model-path is required for the mcts player"),
                 InferenceConfig::default(),
                 args.batch_size.expect("--batch_size is required for the mcts player"),
                 None,
