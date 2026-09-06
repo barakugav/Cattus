@@ -42,6 +42,13 @@ torch-python = ["pyo3", "numpy"]
 torch-tch-rs = ["torch"]
 onnx-tract = ["tract-onnx"]
 onnx-ort = ["ort"]
+# Execution providers for the ort backend. Since rc.13 the EP types only exist when ort's own
+# feature is on, and that feature set also decides which prebuilt ONNX Runtime gets downloaded —
+# so enabling cuda/tensorrt pulls a much larger CUDA 13 + TensorRT build. Enable none of them for
+# the CPU provider.
+onnx-ort-cuda = ["onnx-ort", "ort/cuda"]
+onnx-ort-tensorrt = ["onnx-ort", "ort/tensorrt"]
+onnx-ort-coreml = ["onnx-ort", "ort/coreml"]
 executorch = ["dep:executorch", "executorch-sys"]
 stockfish = ["pleco"]
 

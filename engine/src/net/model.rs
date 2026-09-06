@@ -151,7 +151,7 @@ class Model:
                     .unwrap()
                     .commit_from_file(path)
                     .unwrap();
-                let output_names = model.outputs.iter().map(|o| o.name.clone()).collect();
+                let output_names = model.outputs().iter().map(|o| o.name().to_owned()).collect();
                 ModelImpl::Ort { model, output_names }
             }
             #[cfg(not(all(
