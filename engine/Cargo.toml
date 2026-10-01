@@ -26,7 +26,7 @@ crossbeam-utils = "0.8.4"
 pyo3 = { version = "0.27", features = ["auto-initialize"], optional = true }
 numpy = { version = "0.27", default-features = false, optional = true }
 tract-onnx = { version = "0.22", optional = true }
-ort = { version = "=2.0.0-rc.10", optional = true }
+ort = { version = "=2.0.0-rc.13", optional = true }
 executorch = { version = "0.8", features = [
     "module",
     "tensor-ptr",
