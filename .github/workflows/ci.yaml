@@ -15,6 +15,13 @@ concurrency:
 jobs:
   cattus:
     runs-on: ubuntu-latest
+    # Every backend, minus the `onnx-ort-*` execution providers. Those pick which prebuilt ONNX
+    # Runtime ort downloads, and none of them fit a GPU-less Linux runner: CUDA/TensorRT would pull
+    # a far larger build, and CoreML doesn't exist on Linux. They get type-checked on their own
+    # further down instead, which is why these lists are spelled out rather than --all-features.
+    env:
+      ENGINE_FEATURES: torch-python,torch-tch-rs,onnx-tract,onnx-ort,executorch,stockfish
+      SELF_PLAY_FEATURES: torch-python,torch-tch-rs,onnx-tract,onnx-ort,executorch
     permissions:
       contents: read
       checks: write
@@ -56,35 +63,46 @@ jobs:
 
       # Engine
       - name: Build Rust
-        run: cargo build --all-features
+        run: cargo build --features $ENGINE_FEATURES
         working-directory: engine
       - name: Rust Clippy linter
         uses: auguwu/clippy-action@1.5.0
         with:
           working-directory: engine
-          check-args: --all-features
+          check-args: --features ${{ env.ENGINE_FEATURES }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Rust tests
         run: |
           source .envrc
-          cargo test --all-features
+          cargo test --features $ENGINE_FEATURES
         working-directory: engine
       - name: Rust Clippy linter for examples
         uses: auguwu/clippy-action@1.5.0
         with:
           working-directory: engine
-          check-args: --all-features --examples
+          check-args: --features ${{ env.ENGINE_FEATURES }} --examples
+          token: ${{ secrets.GITHUB_TOKEN }}
+      # Type-checks the execution provider code paths without downloading any ONNX Runtime:
+      # ORT_SKIP_DOWNLOAD makes ort defer the missing-library error to link time, which clippy
+      # never reaches.
+      - name: Rust Clippy linter for ort execution providers
+        uses: auguwu/clippy-action@1.5.0
+        env:
+          ORT_SKIP_DOWNLOAD: 1
+        with:
+          working-directory: engine
+          check-args: --features onnx-ort,onnx-ort-cuda,onnx-ort-tensorrt,onnx-ort-coreml --all-targets
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # Self-play crate
       - name: Build Rust
-        run: cargo build --all-features
+        run: cargo build --features $SELF_PLAY_FEATURES
         working-directory: training/self-play
       - name: Rust Clippy linter
         uses: auguwu/clippy-action@1.5.0
         with:
           working-directory: training/self-play
-          check-args: --all-features
+          check-args: --features ${{ env.SELF_PLAY_FEATURES }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       # Training package

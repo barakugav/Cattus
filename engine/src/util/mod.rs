@@ -92,13 +92,24 @@ pub fn init_globals(config: GlobalConfig) {
 
     #[cfg(feature = "onnx-ort")]
     {
-        ort::init()
-            .with_execution_providers(vec![
-                ort::execution_providers::TensorRTExecutionProvider::default().build(),
-                ort::execution_providers::CUDAExecutionProvider::default().build(),
-                ort::execution_providers::CoreMLExecutionProvider::default().build(),
-            ])
-            .commit()
-            .unwrap();
+        // Since rc.13, ort only exposes an execution provider's type when its own cargo feature is
+        // on, so every entry here is gated behind the matching `onnx-ort-*` feature. With none of
+        // them enabled the list is empty and ONNX Runtime just uses the CPU provider.
+        //
+        // `commit` returns false if an environment was already configured, in which case our
+        // execution provider list would be silently ignored.
+        assert!(
+            ort::init()
+                .with_execution_providers([
+                    #[cfg(feature = "onnx-ort-tensorrt")]
+                    ort::ep::TensorRT::default().build(),
+                    #[cfg(feature = "onnx-ort-cuda")]
+                    ort::ep::CUDA::default().build(),
+                    #[cfg(feature = "onnx-ort-coreml")]
+                    ort::ep::CoreML::default().build(),
+                ])
+                .commit(),
+            "the ort environment was already configured"
+        );
     }
 }

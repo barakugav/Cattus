@@ -26,7 +26,20 @@ crossbeam-utils = "0.8.4"
 pyo3 = { version = "0.27", features = ["auto-initialize"], optional = true }
 numpy = { version = "0.27", default-features = false, optional = true }
 tract-onnx = { version = "0.22", optional = true }
-ort = { version = "=2.0.0-rc.10", optional = true }
+# `ort`'s `ndarray` feature is off on purpose: since rc.11 it wants ndarray 0.17, while `tch` is
+# still capped at 0.16. The ort code path in `net::model` hands over raw shapes + buffers instead.
+# `lax-feature-matching` is what keeps `--all-features` usable: since rc.13 ort errors at link time
+# when no prebuilt ONNX Runtime carries every requested execution provider, and no macOS build
+# carries CUDA/TensorRT. With it, ort falls back to the closest match instead.
+ort = { version = "=2.0.0-rc.13", default-features = false, features = [
+    "std",
+    "tracing",
+    "download-binaries",
+    "tls-native",
+    "copy-dylibs",
+    "api-27",
+    "lax-feature-matching",
+], optional = true }
 executorch = { version = "0.8", features = [
     "module",
     "tensor-ptr",
@@ -37,7 +50,7 @@ torch = { package = "tch", version = "0.22", default-features = false, optional 
 
 
 [features]
-default = []
+default = ["onnx-ort"]
 torch-python = ["pyo3", "numpy"]
 torch-tch-rs = ["torch"]
 onnx-tract = ["tract-onnx"]

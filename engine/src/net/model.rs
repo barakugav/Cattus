@@ -237,21 +237,30 @@ class Model:
             }
             #[cfg(feature = "onnx-ort")]
             ModelImpl::Ort { model, output_names } => {
+                // We build `ort` without its `ndarray` feature (see Cargo.toml), so tensors cross
+                // the boundary as a shape plus a flat buffer rather than as an `ArrayD`.
                 let inputs = inputs
                     .into_iter()
-                    .map(|input| ort::session::SessionInputValue::from(ort::value::Value::from_array(input).unwrap()))
+                    .map(|input| {
+                        // Handing over the backing buffer as-is is only correct for a plain
+                        // row-major array starting at element 0; `from_array` rejects the rest by
+                        // checking the buffer length against the shape.
+                        assert!(input.is_standard_layout(), "expected a row-major tensor");
+                        let shape = input.shape().to_vec();
+                        let (data, offset) = input.into_raw_vec_and_offset();
+                        assert_eq!(offset.unwrap_or(0), 0, "expected a tensor starting at offset 0");
+                        ort::session::SessionInputValue::from(ort::value::Tensor::from_array((shape, data)).unwrap())
+                    })
                     .collect::<Vec<_>>();
                 let inputs: &[ort::session::SessionInputValue] = &inputs;
                 let mut outputs = model.run(inputs).unwrap();
                 output_names
                     .iter()
                     .map(|output_name| {
-                        outputs
-                            .remove(output_name)
-                            .unwrap()
-                            .try_extract_array::<f32>()
-                            .unwrap()
-                            .into_owned()
+                        let output = outputs.remove(output_name).unwrap();
+                        let (shape, data) = output.try_extract_tensor::<f32>().unwrap();
+                        let shape = shape.iter().map(|&dim| dim as usize).collect::<Vec<_>>();
+                        ArrayD::from_shape_vec(shape, data.to_vec()).unwrap()
                     })
                     .collect::<Vec<_>>()
             }
